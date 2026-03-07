@@ -124,8 +124,11 @@ async function transferUSDCToCircles(fromAddress: string): Promise<TransactionRe
 function setupEventListeners(): void {
   if (!isMetaMaskInstalled()) return;
 
-  window.ethereum!.on('accountsChanged', (accounts: unknown[]) => {
-    console.log(`👤 Account changed to: ${(accounts as string[])[0]}`);
+  window.ethereum!.on('accountsChanged', (...args: unknown[]) => {
+    if (Array.isArray(args[0])) {
+      const accounts = args[0] as string[];
+      console.log(`👤 Account changed to: ${accounts[0]}`);
+    }
   });
 
   window.ethereum!.on('chainChanged', (chainId: unknown) => {
@@ -167,7 +170,9 @@ async function main(): Promise<void> {
     } else {
       console.error('❌ Unknown error occurred');
     }
-    process.exit(1);
+    if (typeof process !== 'undefined' && typeof process.exit === 'function') {
+      process.exit(1);
+    }
   }
 }
 
