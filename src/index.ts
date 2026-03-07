@@ -1,10 +1,24 @@
 import { BrowserProvider, Contract, parseUnits, formatUnits, JsonRpcProvider } from 'ethers';
-import { CONFIG, USDC_ABI, CIRCLES_SEED_ABI } from './config';
+import { CONFIG, USDC_ABI } from './config';
 import { EthereumProvider, TransactionResult } from './types';
 
 declare global {
   interface Window {
     ethereum?: EthereumProvider;
+  }
+}
+
+/**
+ * Append a line to the on-page output element and also log to console
+ */
+let outputEl: HTMLElement | null = null;
+
+function log(message: string): void {
+  console.log(message);
+  if (!outputEl) outputEl = document.getElementById('output');
+  if (outputEl) {
+    outputEl.textContent += message + '\n';
+    outputEl.scrollTop = outputEl.scrollHeight;
   }
 }
 
@@ -27,8 +41,6 @@ async function connectMetaMask(): Promise<string> {
     throw new Error('MetaMask is not installed. Please install it from https://metamask.io');
   }
 
-  console.log('🔌 Connecting to MetaMask...');
-
   const accounts = (await window.ethereum!.request({
     method: 'eth_requestAccounts',
   })) as string[];
@@ -38,7 +50,7 @@ async function connectMetaMask(): Promise<string> {
   }
 
   const account = accounts[0]!;
-  console.log(`✅ Connected: ${account}`);
+  log(`✅ Connected: ${account}`);
 
   return account;
 }
@@ -53,7 +65,7 @@ async function getUSDCBalance(address: string): Promise<string> {
   const balance = await usdcContract.balanceOf(address);
   const formattedBalance = formatUnits(balance, CONFIG.USDC_DECIMALS);
 
-  console.log(`💰 USDC Balance: ${formattedBalance} USDC`);
+  log(`💰 USDC Balance: ${formattedBalance} USDC`);
 
   return formattedBalance;
 }
@@ -70,9 +82,9 @@ async function transferUSDCToCircles(fromAddress: string): Promise<TransactionRe
     throw new Error('❌ Please set CIRCLES_RECIPIENT in .env file');
   }
 
-  console.log(`\n🚀 Initiating transfer of ${CONFIG.TRANSFER_AMOUNT} USDC...`);
-  console.log(`📤 From: ${fromAddress}`);
-  console.log(`📥 To (Circles): ${CONFIG.CIRCLES_RECIPIENT}`);
+  log(`\n🚀 Initiating transfer of ${CONFIG.TRANSFER_AMOUNT} USDC...`);
+  log(`📤 From: ${fromAddress}`);
+  log(`📥 To (Circles): ${CONFIG.CIRCLES_RECIPIENT}`);
 
   // Create provider and signer from MetaMask
   const provider = new BrowserProvider(window.ethereum!);
@@ -84,15 +96,15 @@ async function transferUSDCToCircles(fromAddress: string): Promise<TransactionRe
   // Convert amount to Wei (USDC has 6 decimals)
   const amountInWei = parseUnits(CONFIG.TRANSFER_AMOUNT, CONFIG.USDC_DECIMALS);
 
-  console.log(`\n⏳ Waiting for MetaMask confirmation...`);
+  log(`\n⏳ Waiting for MetaMask confirmation...`);
 
   // Send transfer transaction
   const tx = await usdcContract.transfer(CONFIG.CIRCLES_RECIPIENT, amountInWei);
 
-  console.log(`✅ Transaction submitted!`);
-  console.log(`📋 Hash: ${tx.hash}`);
+  log(`✅ Transaction submitted!`);
+  log(`📋 Hash: ${tx.hash}`);
 
-  console.log(`⏳ Waiting for confirmation...`);
+  log(`⏳ Waiting for confirmation...`);
 
   // Wait for confirmation
   const receipt = await tx.wait();
@@ -111,9 +123,9 @@ async function transferUSDCToCircles(fromAddress: string): Promise<TransactionRe
     status: receipt.status === 1 ? 'success' : 'failed',
   };
 
-  console.log(`\n🎉 Transfer ${result.status.toUpperCase()}!`);
-  console.log(`📊 Block: ${result.blockNumber}`);
-  console.log(`⛽ Gas Used: ${result.gasUsed}`);
+  log(`\n🎉 Transfer ${result.status.toUpperCase()}!`);
+  log(`📊 Block: ${result.blockNumber}`);
+  log(`⛽ Gas Used: ${result.gasUsed}`);
 
   return result;
 }
@@ -127,12 +139,12 @@ function setupEventListeners(): void {
   window.ethereum!.on('accountsChanged', (...args: unknown[]) => {
     if (Array.isArray(args[0])) {
       const accounts = args[0] as string[];
-      console.log(`👤 Account changed to: ${accounts[0]}`);
+      log(`👤 Account changed to: ${accounts[0]}`);
     }
   });
 
   window.ethereum!.on('chainChanged', (chainId: unknown) => {
-    console.log(`🔗 Network changed to Chain ID: ${parseInt(chainId as string, 16)}`);
+    log(`🔗 Network changed to Chain ID: ${parseInt(chainId as string, 16)}`);
   });
 }
 
@@ -140,16 +152,22 @@ function setupEventListeners(): void {
  * Main execution
  */
 async function main(): Promise<void> {
-  console.log('════════════════════════════════════════════════');
-  console.log('  MetaMask → Circles USDC Transfer');
-  console.log('  Amount: 19,800 USDC');
-  console.log('════════════════════════════════════════════════\n');
+  if (outputEl) outputEl.textContent = '';
+
+  log('════════════════════════════════════════════════');
+  log('  MetaMask → Circles USDC Transfer');
+  log('  Amount: 19,800 USDC');
+  log('════════════════════════════════════════════════\n');
+
+  const btn = document.getElementById('transfer-btn') as HTMLButtonElement | null;
+  if (btn) btn.disabled = true;
 
   try {
     // Setup listeners
     setupEventListeners();
 
     // Connect to MetaMask
+    log('🔌 Connecting to MetaMask...');
     const userAccount = await connectMetaMask();
 
     // Check balance
@@ -158,25 +176,32 @@ async function main(): Promise<void> {
     // Perform transfer
     const result = await transferUSDCToCircles(userAccount);
 
-    console.log('\n📄 Transaction Details:');
-    console.log(`   Hash: ${result.hash}`);
-    console.log(`   From: ${result.from}`);
-    console.log(`   To: ${result.to}`);
-    console.log(`   Amount: ${result.amount} USDC`);
-    console.log(`   Status: ${result.status}\n`);
+    log('\n📄 Transaction Details:');
+    log(`   Hash: ${result.hash}`);
+    log(`   From: ${result.from}`);
+    log(`   To: ${result.to}`);
+    log(`   Amount: ${result.amount} USDC`);
+    log(`   Status: ${result.status}\n`);
   } catch (error) {
     if (error instanceof Error) {
-      console.error(`\n❌ Error: ${error.message}`);
+      log(`\n❌ Error: ${error.message}`);
+      console.error(error);
     } else {
-      console.error('❌ Unknown error occurred');
+      log('❌ Unknown error occurred');
+      console.error(error);
     }
-    if (typeof process !== 'undefined' && typeof process.exit === 'function') {
-      process.exit(1);
-    }
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
-// Run if in browser or Node.js
+// Wire up the transfer button when the DOM is ready
 if (typeof window !== 'undefined') {
-  main();
+  window.addEventListener('DOMContentLoaded', () => {
+    outputEl = document.getElementById('output');
+    const btn = document.getElementById('transfer-btn');
+    if (btn) {
+      btn.addEventListener('click', () => { main().catch(console.error); });
+    }
+  });
 }

@@ -31,13 +31,29 @@
         max-height: 400px;
         font-size: 0.85rem;
       }
+      button {
+        background: #f6851b;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 0.75rem 2rem;
+        font-size: 1rem;
+        font-family: monospace;
+        cursor: pointer;
+        margin-bottom: 1rem;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     </style>
   </head>
   <body>
     <div id="app">
       <h1>MetaMask → Circles USDC Transfer</h1>
-      <p>Open the browser console (F12) to see transfer output.</p>
-      <pre id="output">Starting…</pre>
+      <p>Click the button below to connect MetaMask and transfer 19,800 USDC.</p>
+      <button id="transfer-btn">Connect &amp; Transfer</button>
+      <pre id="output">Ready. Click "Connect &amp; Transfer" to begin.</pre>
     </div>
     <script type="module" src="/src/index.ts"></script>
   </body>
