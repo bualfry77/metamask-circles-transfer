@@ -1,1 +1,17 @@
-{"name":"metamask-circles-transfer","version":"1.0.0","description":"Transfer 19,800 USDC from MetaMask to Circles Network","main":"dist/index.js","scripts":{"build":"tsc","start":"node dist/index.js","dev":"ts-node src/index.ts"},"dependencies":{"ethers":"^6.10.0","dotenv":"^16.3.1"},"devDependencies":{"typescript":"^5.3.3","ts-node":"^10.9.2","@types/node":"^20.10.6"}}
+{
+  "name": "metamask-circles-transfer",
+  "version": "1.0.0",
+  "description": "Transfer 19,800 USDC from MetaMask to Circles Network",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "ethers": "^6.10.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vite": "^6.2.1"
+  }
+}

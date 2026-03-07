@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MetaMask → Circles USDC Transfer</title>
+    <style>
+      body {
+        font-family: monospace;
+        background: #1a1a2e;
+        color: #e0e0e0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 1rem;
+        box-sizing: border-box;
+      }
+      #app {
+        text-align: center;
+        max-width: 600px;
+      }
+      h1 { color: #f6851b; }
+      pre {
+        background: #0f0f23;
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: left;
+        overflow: auto;
+        max-height: 400px;
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <h1>MetaMask → Circles USDC Transfer</h1>
+      <p>Open the browser console (F12) to see transfer output.</p>
+      <pre id="output">Starting…</pre>
+    </div>
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>
