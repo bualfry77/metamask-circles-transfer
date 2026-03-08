@@ -115,9 +115,17 @@ async function handleTransfer(): Promise<void> {
     log(`\n🚀 Initiating transfer of ${CONFIG.transferAmount} USDC...`);
     log(`📤 From: ${walletState.address}`);
     log(`📥 To (Circles): ${CONFIG.circlesRecipient}`);
+
+    const gasPayerInput = document.getElementById('gas-payer-address') as HTMLInputElement | null;
+    const gasPayerAddress = gasPayerInput?.value.trim() || undefined;
+
+    if (gasPayerAddress) {
+      log(`⛽ Gas Payer: ${gasPayerAddress}`);
+    }
+
     log('⏳ Waiting for MetaMask confirmation...');
 
-    const result = await transferUSDC(walletState.address, CONFIG);
+    const result = await transferUSDC(walletState.address, CONFIG, gasPayerAddress);
     transactions.push(result);
 
     log(`✅ Transfer ${result.status.toUpperCase()}!`);
