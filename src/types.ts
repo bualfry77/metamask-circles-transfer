@@ -13,11 +13,19 @@ export interface TransactionResult {
   blockNumber: number;
   gasUsed: string;
   status: 'success' | 'failed';
+  timestamp: number;
 }
 
-export interface TransferConfig {
-  tenderly_rpc: string;
-  usdc_address: string;
-  circles_recipient: string;
-  transfer_amount: string;
+export interface WalletState {
+  address: string | null;
+  usdcBalance: string;
+  isConnected: boolean;
+}
+
+export interface AppConfig {
+  usdcAddress: string;
+  usdcDecimals: number;
+  circlesRecipient: string;
+  tenderlyRpc: string;
+  transferAmount: string;
 }
