@@ -62,15 +62,6 @@ export async function transferUSDC(
       throw new Error(`Invalid gas-payer address: ${config.gasPayerAddress}`);
     }
 
-    // Check ETH balance of gas payer — require a small minimum to cover fees
-    const MIN_GAS_PAYER_ETH = parseEther('0.001');
-    const gasPayerEthBalance = await readOnlyProvider.getBalance(config.gasPayerAddress);
-    if (gasPayerEthBalance < MIN_GAS_PAYER_ETH) {
-      throw new Error(
-        `Gas-payer address ${config.gasPayerAddress} has insufficient ETH balance to cover transaction fees (minimum 0.001 ETH required)`,
-      );
-    }
-
     // Check existing allowance — approve if the gas payer is not yet authorised
     const currentAllowance = await readonlyContract.allowance(
       fromAddress,
