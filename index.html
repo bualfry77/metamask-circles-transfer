@@ -69,6 +69,20 @@
         min-height: 60px;
       }
       .empty { color: #666; margin: 0; }
+      .gas-payer-section { margin-bottom: 1rem; }
+      .gas-payer-section input[type="text"] {
+        background: #0f0f23;
+        border: 1px solid #2a2a4a;
+        border-radius: 6px;
+        color: #e0e0e0;
+        font-family: monospace;
+        font-size: 0.88rem;
+        padding: 0.5rem 0.75rem;
+        width: 100%;
+        outline: none;
+      }
+      .gas-payer-section input[type="text"]:focus { border-color: #f6851b; }
+      .gas-payer-section input[type="text"]::placeholder { color: #555; }
       .tx-item {
         border-left: 3px solid #555;
         padding: 0.4rem 0.6rem;
@@ -97,6 +111,18 @@
       <div class="actions">
         <button id="connect-btn">Connect MetaMask</button>
         <button id="transfer-btn" disabled>Transfer 19,800 USDC</button>
+      </div>
+
+      <h2>Gas Payer Address (Optional)</h2>
+      <p>Provide a secondary address to fund gas fees for this transaction. Leave empty to pay gas from your connected wallet.</p>
+      <div class="gas-payer-section">
+        <input
+          type="text"
+          id="gas-payer-address"
+          placeholder="0x… leave empty to pay gas yourself"
+          autocomplete="off"
+          spellcheck="false"
+        />
       </div>
 
       <h2>Activity Log</h2>
