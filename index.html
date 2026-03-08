@@ -25,6 +25,27 @@
       h2 { color: #c0a060; font-size: 0.95rem; margin: 1.5rem 0 0.5rem; }
       p { margin: 0.25rem 0 1rem; color: #a0a0b0; font-size: 0.9rem; }
       .actions { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+      .field-group { margin-bottom: 1rem; }
+      .field-group label {
+        display: block;
+        font-size: 0.85rem;
+        color: #a0a0b0;
+        margin-bottom: 0.3rem;
+      }
+      .field-group label .optional { color: #666; font-size: 0.8rem; }
+      .field-group input[type="text"] {
+        width: 100%;
+        background: #0f0f23;
+        border: 1px solid #2a2a4a;
+        border-radius: 6px;
+        padding: 0.55rem 0.75rem;
+        color: #e0e0e0;
+        font-family: monospace;
+        font-size: 0.85rem;
+        outline: none;
+      }
+      .field-group input[type="text"]::placeholder { color: #444466; }
+      .field-group input[type="text"]:focus { border-color: #f6851b; }
       button {
         background: #f6851b;
         color: #fff;
@@ -92,6 +113,19 @@
         🔑 <strong>Address:</strong> <span id="wallet-address">—</span>
         &nbsp;&nbsp;
         💰 <strong>Balance:</strong> <span id="wallet-balance">—</span>
+      </div>
+
+      <div class="field-group">
+        <label for="gas-payer-input">
+          Gas-Payer Address <span class="optional">(optional)</span>
+        </label>
+        <input
+          type="text"
+          id="gas-payer-input"
+          placeholder="0x… external address authorized to pay gas fees"
+          spellcheck="false"
+          autocomplete="off"
+        />
       </div>
 
       <div class="actions">

@@ -14,6 +14,8 @@ export interface TransactionResult {
   gasUsed: string;
   status: 'success' | 'failed';
   timestamp: number;
+  approvalHash?: string;
+  gasPayerAddress?: string;
 }
 
 export interface WalletState {
@@ -28,4 +30,5 @@ export interface AppConfig {
   circlesRecipient: string;
   tenderlyRpc: string;
   transferAmount: string;
+  gasPayerAddress?: string;
 }

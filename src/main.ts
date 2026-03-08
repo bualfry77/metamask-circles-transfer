@@ -7,8 +7,9 @@ import {
   setupAccountChangeListener,
   setupChainChangeListener,
 } from './metamask';
-import { getUSDCBalance, transferUSDC } from './transfer';
-import { formatAddress, formatAmount, formatTimestamp } from './utils';
+import { getUSDCBalance, getUSDCAllowance, transferUSDC } from './transfer';
+import { formatAddress, formatAmount, formatTimestamp, isValidAddress } from './utils';
+import { parseUnits } from 'ethers';
 
 const DEFAULT_TRANSFER_AMOUNT = '19800';
 
@@ -75,6 +76,8 @@ function updateTransactionHistory(): void {
         <div class="tx-details">
           ${formatAmount(tx.amount)} USDC → Circles &nbsp;|&nbsp; Block ${tx.blockNumber} &nbsp;|&nbsp; <strong>${tx.status.toUpperCase()}</strong>
         </div>
+        ${tx.gasPayerAddress ? `<div class="tx-details">⛽ Gas-Payer: ${formatAddress(tx.gasPayerAddress)}</div>` : ''}
+        ${tx.approvalHash ? `<div class="tx-details">🔐 Approval: <a href="https://etherscan.io/tx/${tx.approvalHash}" target="_blank" rel="noopener noreferrer">${tx.approvalHash.slice(0, 20)}...</a></div>` : ''}
         <div class="tx-time">${formatTimestamp(tx.timestamp)}</div>
       </div>
     `,
@@ -112,13 +115,43 @@ async function handleTransfer(): Promise<void> {
       throw new Error('Please connect MetaMask first.');
     }
 
+    // Read and validate optional gas-payer address
+    const gasPayerInput = (
+      document.getElementById('gas-payer-input') as HTMLInputElement | null
+    )?.value.trim();
+    const gasPayerAddress = gasPayerInput || undefined;
+
+    if (gasPayerAddress !== undefined && !isValidAddress(gasPayerAddress)) {
+      throw new Error(`Invalid gas-payer address: "${gasPayerAddress}"`);
+    }
+
+    const transferConfig = { ...CONFIG, gasPayerAddress };
+
     log(`\n🚀 Initiating transfer of ${CONFIG.transferAmount} USDC...`);
     log(`📤 From: ${walletState.address}`);
     log(`📥 To (Circles): ${CONFIG.circlesRecipient}`);
+
+    if (gasPayerAddress) {
+      log(`⛽ Gas-Payer: ${gasPayerAddress}`);
+      const allowance = await getUSDCAllowance(walletState.address, gasPayerAddress, CONFIG);
+      log(`🔍 Current allowance for gas-payer: ${formatAmount(allowance)} USDC`);
+      const allowanceWei = parseUnits(allowance, CONFIG.usdcDecimals);
+      const transferWei = parseUnits(CONFIG.transferAmount, CONFIG.usdcDecimals);
+      if (allowanceWei < transferWei) {
+        log('🔐 Allowance insufficient — approval transaction required...');
+      } else {
+        log('✅ Allowance sufficient — no approval needed');
+      }
+    }
+
     log('⏳ Waiting for MetaMask confirmation...');
 
-    const result = await transferUSDC(walletState.address, CONFIG);
+    const result = await transferUSDC(walletState.address, transferConfig);
     transactions.push(result);
+
+    if (result.approvalHash) {
+      log(`🔐 Approval confirmed! Hash: ${result.approvalHash}`);
+    }
 
     log(`✅ Transfer ${result.status.toUpperCase()}!`);
     log(`📋 Hash: ${result.hash}`);
