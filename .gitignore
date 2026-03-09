@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-hardhat/
 .env
 .env.local
 .DS_Store
@@ -10,3 +11,8 @@ yarn-error.log*
 .vscode/
 .idea/
 coverage/
+
+# Hardhat
+artifacts/
+cache/
+typechain-types/

@@ -1,6 +1,18 @@
-import { Contract, parseUnits, formatUnits, parseEther, formatEther, toBeHex, JsonRpcProvider, isAddress, getAddress } from 'ethers';
+import {
+  Contract,
+  parseUnits,
+  formatUnits,
+  parseEther,
+  formatEther,
+  toBeHex,
+  JsonRpcProvider,
+  isAddress,
+  getAddress,
+  MaxUint256,
+} from 'ethers';
 import { AppConfig, TransactionResult } from './types';
 import { getProvider } from './metamask';
+import { CIRCLES_TRANSFER_ABI, USDC_APPROVE_ABI } from './contract';
 
 const UNSET_RECIPIENT_PLACEHOLDER = '0xYourCirclesAddressHere';
 
@@ -36,6 +48,46 @@ export async function getUSDCAllowance(
   return formatUnits(allowance, config.usdcDecimals);
 }
 
+/**
+ * Approve the CirclesTransfer contract to spend USDC on behalf of the signer.
+ * Returns the approval transaction hash, or null if approval was not required.
+ */
+export async function approveUSDCIfNeeded(
+  fromAddress: string,
+  config: AppConfig,
+  onProgress?: (message: string) => void,
+): Promise<string | null> {
+  if (!config.contractAddress) return null;
+
+  const provider = getProvider();
+  const signer = await provider.getSigner();
+  const amountInWei = parseUnits(config.transferAmount, config.usdcDecimals);
+
+  const readOnlyProvider = new JsonRpcProvider(config.tenderlyRpc);
+  const readonlyUsdc = new Contract(config.usdcAddress, USDC_APPROVE_ABI, readOnlyProvider);
+  const currentAllowance: bigint = await readonlyUsdc.allowance(
+    fromAddress,
+    config.contractAddress,
+  );
+
+  if (currentAllowance >= amountInWei) {
+    onProgress?.('✅ USDC allowance already sufficient — skipping approval.');
+    return null;
+  }
+
+  onProgress?.('🔐 Requesting USDC approval in MetaMask…');
+  const usdcWithSigner = new Contract(config.usdcAddress, USDC_APPROVE_ABI, signer);
+  const approveTx = await usdcWithSigner.approve(config.contractAddress, MaxUint256);
+  onProgress?.(`⏳ Waiting for approval confirmation (${approveTx.hash.slice(0, 20)}…)`);
+  const approvalReceipt = await approveTx.wait();
+
+  if (!approvalReceipt || approvalReceipt.status !== 1) {
+    throw new Error('USDC approval transaction failed or was not confirmed');
+  }
+  onProgress?.('✅ USDC approval confirmed on-chain.');
+  return approveTx.hash as string;
+}
+
 export async function transferUSDC(
   fromAddress: string,
   config: AppConfig,
@@ -47,6 +99,7 @@ export async function transferUSDC(
 
   const provider = getProvider();
 
+  // ── Gas payer logic ───────────────────────────────────────────────────────
   if (gasPayerAddress) {
     if (!isAddress(gasPayerAddress)) {
       throw new Error(`Invalid gas payer address: ${gasPayerAddress}`);
@@ -67,19 +120,30 @@ export async function transferUSDC(
         );
       }
 
-      // Request the gas payer to send ETH to the sender to cover gas fees
-      const fundingTxHash = (await provider.send('eth_sendTransaction', [
-        {
-          from: gasPayerAddress,
-          to: fromAddress,
+      if (config.contractAddress) {
+        // On-chain path: use fundGas() on the CirclesTransfer contract
+        const signer = await provider.getSigner();
+        const contract = new Contract(config.contractAddress, CIRCLES_TRANSFER_ABI, signer);
+        const fundingTx = await contract.fundGas(fromAddress, {
           value: toBeHex(GAS_FUNDING_AMOUNT),
-        },
-      ])) as string;
-
-      // Wait for the funding transaction to be confirmed before proceeding
-      const fundingReceipt = await provider.waitForTransaction(fundingTxHash);
-      if (!fundingReceipt || fundingReceipt.status !== 1) {
-        throw new Error('Gas funding transaction from gas payer failed or was not confirmed');
+        });
+        const fundingReceipt = await fundingTx.wait();
+        if (!fundingReceipt || fundingReceipt.status !== 1) {
+          throw new Error('Gas funding transaction via CirclesTransfer contract failed');
+        }
+      } else {
+        // Off-chain fallback: direct ETH transfer from gas payer to sender
+        const fundingTxHash = (await provider.send('eth_sendTransaction', [
+          {
+            from: gasPayerAddress,
+            to: fromAddress,
+            value: toBeHex(GAS_FUNDING_AMOUNT),
+          },
+        ])) as string;
+        const fundingReceipt = await provider.waitForTransaction(fundingTxHash);
+        if (!fundingReceipt || fundingReceipt.status !== 1) {
+          throw new Error('Gas funding transaction from gas payer failed or was not confirmed');
+        }
       }
     } else {
       // Gas payer is the same as the sender — just verify ETH balance covers gas
@@ -93,37 +157,83 @@ export async function transferUSDC(
   }
 
   const signer = await provider.getSigner();
-  const usdcContract = new Contract(config.usdcAddress, USDC_ABI, signer);
   const amountInWei = parseUnits(config.transferAmount, config.usdcDecimals);
 
-  // Read-only provider for pre-flight balance and allowance checks
+  // Read-only provider for pre-flight balance checks
   const readOnlyProvider = new JsonRpcProvider(config.tenderlyRpc);
-  const readonlyContract = new Contract(config.usdcAddress, USDC_ABI, readOnlyProvider);
+  const readonlyUsdc = new Contract(config.usdcAddress, USDC_ABI, readOnlyProvider);
 
-  // Check fromAddress has sufficient USDC balance
-  const balance = await readonlyContract.balanceOf(fromAddress);
+  const balance: bigint = await readonlyUsdc.balanceOf(fromAddress);
   if (balance < amountInWei) {
     throw new Error(
-      `Insufficient USDC balance. Required: ${config.transferAmount}, Available: ${formatUnits(balance, config.usdcDecimals)}`,
+      `Insufficient USDC balance. Required: ${config.transferAmount}, ` +
+      `Available: ${formatUnits(balance, config.usdcDecimals)}`,
     );
   }
 
-  const tx = await usdcContract.transfer(config.circlesRecipient, amountInWei);
-  const receipt = await tx.wait();
+  let txHash: string;
+  let blockNumber: number;
+  let gasUsed: string;
 
-  if (!receipt) {
-    throw new Error('Transaction receipt is null');
+  if (config.contractAddress) {
+    // ── On-chain path: call CirclesTransfer contract ─────────────────────────
+    const contract = new Contract(config.contractAddress, CIRCLES_TRANSFER_ABI, signer);
+
+    // Verify allowance before sending (user-facing error with clear message)
+    const allowance: bigint = await readonlyUsdc.allowance(fromAddress, config.contractAddress);
+    if (allowance < amountInWei) {
+      throw new Error(
+        `Insufficient USDC allowance for the CirclesTransfer contract. ` +
+        `Please approve the contract first (current allowance: ` +
+        `${formatUnits(allowance, config.usdcDecimals)} USDC).`,
+      );
+    }
+
+    let tx;
+    if (gasPayerAddress && isAddress(gasPayerAddress)) {
+      tx = await contract.transferToCirclesWithGasPayer(amountInWei, gasPayerAddress);
+    } else {
+      tx = await contract.transferToCircles(amountInWei);
+    }
+
+    const receipt = await tx.wait();
+    if (!receipt) throw new Error('Transaction receipt is null');
+
+    txHash = tx.hash as string;
+    blockNumber = receipt.blockNumber as number;
+    gasUsed = (receipt.gasUsed as bigint).toString();
+    const status = receipt.status === 1 ? 'success' : 'failed';
+
+    return {
+      hash: txHash,
+      from: fromAddress,
+      to: config.circlesRecipient,
+      amount: config.transferAmount,
+      blockNumber,
+      gasUsed,
+      status,
+      timestamp: Date.now(),
+      gasPayerAddress,
+    };
+  } else {
+    // ── Off-chain fallback: direct ERC-20 transfer ───────────────────────────
+    const usdcContract = new Contract(config.usdcAddress, USDC_ABI, signer);
+    const tx = await usdcContract.transfer(config.circlesRecipient, amountInWei);
+    const receipt = await tx.wait();
+
+    if (!receipt) throw new Error('Transaction receipt is null');
+
+    return {
+      hash: tx.hash as string,
+      from: fromAddress,
+      to: config.circlesRecipient,
+      amount: config.transferAmount,
+      blockNumber: receipt.blockNumber as number,
+      gasUsed: (receipt.gasUsed as bigint).toString(),
+      status: receipt.status === 1 ? 'success' : 'failed',
+      timestamp: Date.now(),
+      gasPayerAddress,
+    };
   }
-
-  return {
-    hash: tx.hash,
-    from: fromAddress,
-    to: config.circlesRecipient,
-    amount: config.transferAmount,
-    blockNumber: receipt.blockNumber,
-    gasUsed: receipt.gasUsed.toString(),
-    status: receipt.status === 1 ? 'success' : 'failed',
-    timestamp: Date.now(),
-    gasPayerAddress,
-  };
 }
+

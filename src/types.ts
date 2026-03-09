@@ -30,5 +30,13 @@ export interface AppConfig {
   circlesRecipient: string;
   tenderlyRpc: string;
   transferAmount: string;
+  /** Deployed CirclesTransfer contract address (optional — falls back to direct ERC-20 transfer). */
+  contractAddress?: string;
   gasPayerAddress?: string;
+}
+
+export interface ApprovalResult {
+  hash: string;
+  blockNumber: number;
+  gasUsed: string;
 }
