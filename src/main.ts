@@ -7,10 +7,12 @@ import {
   setupAccountChangeListener,
   setupChainChangeListener,
 } from './metamask';
-import { getUSDCBalance, transferUSDC } from './transfer';
+import { getUSDCBalance, approveUSDCIfNeeded, transferUSDC } from './transfer';
 import { formatAddress, formatAmount, formatTimestamp } from './utils';
 
 const DEFAULT_TRANSFER_AMOUNT = '19800';
+const ETHEREUM_MAINNET_CHAIN_ID = 1;
+const SEPOLIA_CHAIN_ID = 11155111;
 
 const CONFIG: AppConfig = {
   tenderlyRpc: import.meta.env.VITE_TENDERLY_RPC as string,
@@ -18,6 +20,7 @@ const CONFIG: AppConfig = {
   usdcDecimals: 6,
   circlesRecipient: import.meta.env.VITE_CIRCLES_RECIPIENT as string,
   transferAmount: DEFAULT_TRANSFER_AMOUNT,
+  contractAddress: (import.meta.env.VITE_CONTRACT_ADDRESS as string) || undefined,
 };
 
 let walletState: WalletState = { address: null, usdcBalance: '0', isConnected: false };
@@ -32,12 +35,45 @@ function log(message: string): void {
   }
 }
 
+function showWarning(message: string, id = 'warn-generic'): void {
+  const container = document.getElementById('warnings');
+  if (!container) return;
+  if (document.getElementById(id)) return; // already shown
+  const el = document.createElement('div');
+  el.id = id;
+  el.className = 'warning-banner';
+  el.textContent = message;
+  container.appendChild(el);
+}
+
+function clearWarning(id: string): void {
+  document.getElementById(id)?.remove();
+}
+
+function updateContractInfo(): void {
+  const panel = document.getElementById('contract-panel');
+  const contractEl = document.getElementById('contract-address');
+  if (!panel || !contractEl) return;
+  if (CONFIG.contractAddress) {
+    panel.style.display = 'block';
+    contractEl.textContent = CONFIG.contractAddress;
+    clearWarning('warn-no-contract');
+  } else {
+    panel.style.display = 'none';
+    showWarning(
+      '⚠️  No on-chain contract configured. Set VITE_CONTRACT_ADDRESS in .env to enable the on-chain flow.',
+      'warn-no-contract',
+    );
+  }
+}
+
 function updateWalletUI(): void {
   const walletInfo = document.getElementById('wallet-info');
   const addressEl = document.getElementById('wallet-address');
   const balanceEl = document.getElementById('wallet-balance');
   const connectBtn = document.getElementById('connect-btn') as HTMLButtonElement | null;
   const transferBtn = document.getElementById('transfer-btn') as HTMLButtonElement | null;
+  const approveBtn = document.getElementById('approve-btn') as HTMLButtonElement | null;
 
   if (walletState.isConnected && walletState.address) {
     if (walletInfo) walletInfo.style.display = 'block';
@@ -45,10 +81,12 @@ function updateWalletUI(): void {
     if (balanceEl) balanceEl.textContent = `${formatAmount(walletState.usdcBalance)} USDC`;
     if (connectBtn) connectBtn.textContent = 'Connected ✓';
     if (transferBtn) transferBtn.disabled = false;
+    if (approveBtn) approveBtn.disabled = !CONFIG.contractAddress;
   } else {
     if (walletInfo) walletInfo.style.display = 'none';
     if (connectBtn) connectBtn.textContent = 'Connect MetaMask';
     if (transferBtn) transferBtn.disabled = true;
+    if (approveBtn) approveBtn.disabled = true;
   }
 }
 
@@ -105,6 +143,40 @@ async function handleConnect(): Promise<void> {
   }
 }
 
+async function handleApprove(): Promise<void> {
+  const approveBtn = document.getElementById('approve-btn') as HTMLButtonElement | null;
+  if (approveBtn) approveBtn.disabled = true;
+
+  try {
+    if (!walletState.isConnected || !walletState.address) {
+      throw new Error('Please connect MetaMask first.');
+    }
+    if (!CONFIG.contractAddress) {
+      throw new Error('No contract address configured. Set VITE_CONTRACT_ADDRESS in .env.');
+    }
+
+    log('\n🔐 Approving USDC for CirclesTransfer contract...');
+    log(`📜 Contract: ${CONFIG.contractAddress}`);
+
+    const approvalHash = await approveUSDCIfNeeded(
+      walletState.address,
+      CONFIG,
+      (msg) => log(msg),
+    );
+
+    if (approvalHash) {
+      log(`✅ Approval tx: ${approvalHash}`);
+    }
+    clearWarning('warn-no-allowance');
+  } catch (error) {
+    if (error instanceof Error) {
+      log(`❌ Approval Error: ${error.message}`);
+    }
+  } finally {
+    if (approveBtn) approveBtn.disabled = !CONFIG.contractAddress;
+  }
+}
+
 async function handleTransfer(): Promise<void> {
   const transferBtn = document.getElementById('transfer-btn') as HTMLButtonElement | null;
   if (transferBtn) transferBtn.disabled = true;
@@ -120,6 +192,12 @@ async function handleTransfer(): Promise<void> {
     log(`\n🚀 Initiating transfer of ${CONFIG.transferAmount} USDC...`);
     log(`📤 From: ${walletState.address}`);
     log(`📥 To (Circles): ${CONFIG.circlesRecipient}`);
+
+    if (CONFIG.contractAddress) {
+      log(`📜 Via contract: ${CONFIG.contractAddress}`);
+    } else {
+      log('⚠️  No contract configured — using direct ERC-20 transfer (off-chain fallback).');
+    }
 
     if (gasPayerAddress) {
       log(`⛽ Gas Payer: ${gasPayerAddress}`);
@@ -141,6 +219,12 @@ async function handleTransfer(): Promise<void> {
   } catch (error) {
     if (error instanceof Error) {
       log(`❌ Error: ${error.message}`);
+      if (error.message.includes('allowance') || error.message.includes('Insufficient USDC allowance')) {
+        showWarning(
+          '⚠️  Insufficient USDC allowance. Click "Approve USDC" before transferring.',
+          'warn-no-allowance',
+        );
+      }
     }
   } finally {
     if (transferBtn) transferBtn.disabled = false;
@@ -149,9 +233,14 @@ async function handleTransfer(): Promise<void> {
 
 window.addEventListener('DOMContentLoaded', () => {
   if (!isMetaMaskInstalled()) {
+    showWarning(
+      '⚠️  MetaMask is not installed. Please install it from https://metamask.io',
+      'warn-no-metamask',
+    );
     log('⚠️  MetaMask is not installed. Please install it from https://metamask.io');
   }
 
+  updateContractInfo();
   updateWalletUI();
   updateTransactionHistory();
 
@@ -168,10 +257,23 @@ window.addEventListener('DOMContentLoaded', () => {
 
   setupChainChangeListener((chainId) => {
     log(`🔗 Network changed to Chain ID: ${chainId}`);
+    // Warn if not on Ethereum mainnet (1) or Sepolia (11155111)
+    if (chainId !== ETHEREUM_MAINNET_CHAIN_ID && chainId !== SEPOLIA_CHAIN_ID) {
+      showWarning(
+        `⚠️  Unexpected network (Chain ID: ${chainId}). This app targets Ethereum mainnet or Sepolia.`,
+        'warn-wrong-network',
+      );
+    } else {
+      clearWarning('warn-wrong-network');
+    }
   });
 
   document.getElementById('connect-btn')?.addEventListener('click', () => {
     handleConnect().catch(console.error);
+  });
+
+  document.getElementById('approve-btn')?.addEventListener('click', () => {
+    handleApprove().catch(console.error);
   });
 
   document.getElementById('transfer-btn')?.addEventListener('click', () => {

@@ -1,149 +1,202 @@
-# MetaMask → Circles USDC Transfer
+# MetaMask → Circles USDC Transfer (On-Chain)
 
-Transfer 19,800 USDC from MetaMask wallet to Circles network using Tenderly RPC endpoint.
+Transfer 19,800 USDC from a MetaMask wallet to the Circles network via the **CirclesTransfer** on-chain smart contract.
 
-## Features
+## What's New in v2 (On-Chain)
 
-✅ **MetaMask Integration** - Connect securely via MetaMask  
-✅ **19,800 USDC Transfer** - Pre-configured for your amount  
-✅ **Tenderly RPC** - Uses virtual mainnet via Tenderly  
-✅ **Circles Network** - Direct integration with Circles Seed  
-✅ **Error Handling** - Comprehensive error messages  
-✅ **Transaction Tracking** - Real-time confirmation status  
-✅ **Vite Dev Server** - Fast browser dev server, works in GitHub Codespaces  
+| Feature | v1 (off-chain) | v2 (on-chain) |
+|---------|---------------|---------------|
+| USDC transfer | Direct ERC-20 `transfer()` | `approve` → `CirclesTransfer.transferToCircles()` |
+| Gas-payer funding | Raw ETH send | `CirclesTransfer.fundGas()` (on-chain event) |
+| Audit trail | Etherscan ERC-20 log | `USDCTransferred` + `GasFunded` events on contract |
+| Access control | None | Contract owner can update recipient; custom errors |
+| Testnet deploy | — | Hardhat scripts for Sepolia / Goerli |
+
+## Architecture
+
+```
+User Wallet (MetaMask)
+  │
+  │  1. approve(CirclesTransfer, 19800 USDC)
+  │  2. transferToCircles(19800e6)             ─────────────────────────────┐
+  ▼                                                                         ▼
+CirclesTransfer.sol  ──  transferFrom(user → circlesRecipient, 19800 USDC)
+  │
+  └── emit USDCTransferred(from, to, amount, gasPayerAddress)
+
+Gas Payer (optional)
+  │  fundGas(senderAddress) { value: 0.01 ETH }
+  │  → ETH forwarded to sender on-chain
+  └── emit GasFunded(gasPayer, sender, 0.01 ETH)
+```
 
 ## Prerequisites
 
-- Node.js 18+ installed
-- MetaMask browser extension installed in the browser you will use
+- Node.js 18+
+- MetaMask browser extension
 - 19,800 USDC in your MetaMask wallet
-- Circles recipient address configured
+- A small amount of ETH for gas
 
-## Installation & Running (local or Codespaces)
-
-### 1. Install dependencies
+## Installation
 
 ```bash
 npm install
 ```
 
-### 2. Configure environment variables
+## Configuration
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and fill in your values:
+Edit `.env` with your values:
 
 ```env
-# Vite exposes variables prefixed with VITE_ to the browser
+# Front-end
 VITE_TENDERLY_RPC=https://virtual.mainnet.eu.rpc.tenderly.co/YOUR_KEY
 VITE_CIRCLES_RECIPIENT=0xYourCirclesAddressHere
-VITE_CIRCLES_SEED_ADDRESS=0xCirclesSeedAddressHere
+VITE_CONTRACT_ADDRESS=0xDeployedCirclesTransferAddress   # set after deploy
+
+# Deployment
+DEPLOYER_PRIVATE_KEY=your_private_key
+SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/YOUR_KEY
+CIRCLES_RECIPIENT=0xYourCirclesAddressHere
 ```
 
-**Replace `0xYourCirclesAddressHere` with your actual Circles address!**
+## Smart Contract Deployment (Sepolia Testnet)
 
-### 3. Start the dev server
+### 1. Compile the contract
+
+```bash
+npm run compile
+```
+
+### 2. Deploy to Sepolia
+
+```bash
+npm run deploy:sepolia
+```
+
+The script prints the deployed contract address. Copy it into your `.env`:
+
+```env
+VITE_CONTRACT_ADDRESS=0x<deployed address>
+```
+
+### 3. (Optional) Verify on Etherscan
+
+```bash
+npx hardhat verify --network sepolia <CONTRACT_ADDRESS> <USDC_ADDRESS> <CIRCLES_RECIPIENT>
+```
+
+## Running the Front-End
 
 ```bash
 npm run dev
 ```
 
-The server binds to `0.0.0.0:3000` so Codespaces can forward it automatically.
+Open [http://localhost:3000](http://localhost:3000) (or the Codespaces forwarded URL).
 
-### 4. Open the app in your browser
+## Usage Flow
 
-- **Locally**: open [http://localhost:3000](http://localhost:3000)
-- **GitHub Codespaces**: go to the **Ports** tab in VS Code, find port **3000**, and click *Open in Browser*.  
-  Make sure you open the forwarded URL in a browser that has the **MetaMask extension installed**.
+1. **Connect** – Click *Connect MetaMask* to connect your wallet.
+2. **Approve** – Click *Approve USDC* to grant the CirclesTransfer contract permission to spend 19,800 USDC on your behalf. This calls `approve(contractAddress, MaxUint256)` on the USDC token. Only required once per wallet.
+3. **Transfer** – Click *Transfer 19,800 USDC*. The app calls `transferToCircles(19800e6)` on the contract, which:
+   - Verifies allowance and balance on-chain.
+   - Calls `transferFrom(you → circlesRecipient, 19800e6)` atomically.
+   - Emits a `USDCTransferred` event for permanent on-chain proof.
+4. *(Optional)* **Gas Payer** – Enter a secondary address in the Gas Payer field before transferring. The app will call `fundGas(yourAddress)` from the gas payer to top up your ETH balance before the transfer.
 
-### 5. Use the app
+> **Fallback:** If `VITE_CONTRACT_ADDRESS` is not set, the app falls back to the v1 direct ERC-20 `transfer()` flow.
 
-Once the page loads MetaMask will prompt for connection.  
-Approve the request and the transfer will proceed automatically.  
-Watch the browser console (F12) for real-time status output.
+## Smart Contract: `CirclesTransfer.sol`
 
-## Build for production
+### Key Functions
+
+| Function | Who calls it | Description |
+|----------|-------------|-------------|
+| `transferToCircles(uint256 amount)` | Sender | Transfer USDC to Circles recipient. Requires prior `approve`. |
+| `transferToCirclesWithGasPayer(uint256 amount, address gasPayer)` | Sender | Same as above, records gas-payer address in event. |
+| `fundGas(address sender) payable` | Gas payer | Forwards ETH to `sender` for gas fees. Emits `GasFunded`. |
+| `setCirclesRecipient(address)` | Owner only | Update the Circles recipient address. |
+| `transferOwnership(address)` | Owner only | Transfer contract ownership. |
+| `allowanceForContract(address owner)` | Anyone | Read USDC allowance granted to this contract. |
+| `usdcBalanceOf(address account)` | Anyone | Read USDC balance. |
+
+### Events
+
+| Event | Parameters | When |
+|-------|-----------|------|
+| `USDCTransferred` | `from, to, amount, gasPayerAddress` | Every successful transfer |
+| `GasFunded` | `gasPayer, sender, amount` | Every ETH gas-funding |
+| `RecipientUpdated` | `newRecipient` | When owner updates recipient |
+| `OwnershipTransferred` | `previousOwner, newOwner` | When ownership changes |
+
+### Custom Errors
+
+`NotOwner`, `ZeroAddress`, `ZeroAmount`, `RecipientNotSet`, `USDCTransferFailed`, `ETHTransferFailed`, `InsufficientAllowance(required, actual)`, `InsufficientBalance(required, actual)`
+
+## Build for Production
 
 ```bash
-npm run build        # output goes to dist/
-npm run preview      # local preview of the production build
+npm run build       # output → dist/
+npm run preview     # local preview of production build
 ```
-
-## How It Works
-
-1. **Connect MetaMask** – Page loads and requests account access via MetaMask
-2. **Check Balance** – Verifies you have 19,800 USDC on the connected account
-3. **Initiate Transfer** – Sends transfer transaction via MetaMask signer
-4. **MetaMask Approval** – Confirm transaction in the MetaMask popup
-5. **Confirmation** – Waits for on-chain confirmation
-6. **Success** – Transaction hash and block details logged to the console
 
 ## File Structure
 
 ```
+├── contracts/
+│   └── CirclesTransfer.sol      # Solidity smart contract
+├── scripts/
+│   └── deploy.ts                # Hardhat deploy script
 ├── src/
-│   ├── index.ts          # Main transfer logic (browser entry point)
-│   ├── config.ts         # Configuration and ABIs
-│   ├── types.ts          # TypeScript interfaces
-├── index.html            # HTML entry point loaded by Vite
-├── vite.config.ts        # Vite configuration (host 0.0.0.0, port 3000)
-├── tsconfig.json         # TypeScript config (DOM lib included)
-├── package.json          # Dependencies & scripts
-├── .env.example          # Environment template
-├── .gitignore            # Git ignore rules
-└── README.md             # This file
+│   ├── contract.ts              # Contract ABI & helpers
+│   ├── main.ts                  # UI event handlers & app logic
+│   ├── metamask.ts              # MetaMask integration
+│   ├── transfer.ts              # On-chain USDC transfer logic
+│   ├── types.ts                 # TypeScript interfaces
+│   └── utils.ts                 # Formatting utilities
+├── index.html                   # HTML entry point
+├── hardhat.config.ts            # Hardhat configuration (Sepolia / Goerli)
+├── tsconfig.hardhat.json        # TypeScript config for Hardhat scripts
+├── vite.config.ts               # Vite dev server (port 3000)
+├── package.json                 # Dependencies & scripts
+├── .env.example                 # Environment variable template
+└── README.md                    # This file
 ```
-
-## Transaction Details
-
-- **Amount**: 19,800 USDC
-- **From**: Your MetaMask address
-- **To**: Your Circles recipient address
-- **Network**: Ethereum (via Tenderly RPC)
-- **Token**: USDC (`0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`)
 
 ## Troubleshooting
 
-### `TS2304: Cannot find name 'window'`
-Make sure `tsconfig.json` is present with `"lib": ["ES2020", "DOM", "DOM.Iterable"]`.  
-This is already configured in the repo.
+### "No on-chain contract configured"
+Set `VITE_CONTRACT_ADDRESS` in your `.env` to the deployed `CirclesTransfer` address.
+
+### "Insufficient USDC allowance"
+Click **Approve USDC** before transferring. The approval is per-wallet and only needed once.
 
 ### "MetaMask is not installed"
-- Install MetaMask from https://metamask.io
-- Refresh the page after installation
-- In Codespaces, open the forwarded URL in a browser that has MetaMask installed
+Install MetaMask from https://metamask.io and refresh the page.
 
-### "No accounts found"
-- Unlock MetaMask wallet
-- Make sure you're on the Ethereum mainnet
+### "Unexpected network"
+The app targets Ethereum mainnet (Chain ID 1) or Sepolia (Chain ID 11155111). Switch networks in MetaMask.
 
-### "Invalid recipient address"
-- Check `.env` file for correct Circles address
-- Address must be 42 characters (`0x` + 40 hex characters)
+### "Insufficient funds in the gas payer address"
+The gas payer must hold at least 0.012 ETH (0.01 for funding + 0.002 overhead).
 
-### "Insufficient funds"
-- Ensure you have at least 19,800 USDC
-- Check gas fees (a small amount of ETH for gas)
+### `TS2304: Cannot find name 'window'`
+Ensure `tsconfig.json` includes `"lib": ["ES2020", "DOM", "DOM.Iterable"]` (already configured).
 
 ## Security Notes
 
-🔒 **Keep your `.env` file private — it is listed in `.gitignore` and will not be committed.**  
-🔒 **Never commit `.env` to version control.**  
-🔒 **Use MetaMask's built-in security features.**  
-🔒 **Verify recipient address before confirming.**  
+🔒 **Keep `.env` private — it is listed in `.gitignore`.**  
+🔒 **Never commit private keys to version control.**  
+🔒 **The `CirclesTransfer` contract uses `transferFrom`, not `transfer` — your USDC stays in your wallet until the transaction is confirmed.**  
+🔒 **Verify the contract address on Etherscan before approving.**  
+🔒 **The contract owner can only update the Circles recipient — they cannot withdraw your tokens.**
 
 ## License
 
 MIT
-
-## Support
-
-For issues or questions:
-- Check the troubleshooting section above
-- Review transaction hash on Etherscan
-- Verify `.env` configuration
 
 ---
 

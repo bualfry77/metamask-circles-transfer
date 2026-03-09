@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MetaMask → Circles USDC Transfer</title>
+    <title>MetaMask → Circles USDC Transfer (On-Chain)</title>
     <style>
       *, *::before, *::after { box-sizing: border-box; }
       body {
@@ -19,7 +19,7 @@
       }
       #app {
         width: 100%;
-        max-width: 640px;
+        max-width: 660px;
       }
       h1 { color: #f6851b; margin-bottom: 0.25rem; }
       h2 { color: #c0a060; font-size: 0.95rem; margin: 1.5rem 0 0.5rem; }
@@ -38,6 +38,8 @@
       button:disabled { opacity: 0.45; cursor: not-allowed; }
       button#transfer-btn { background: #2e7d46; }
       button#transfer-btn:not(:disabled):hover { background: #3a9e5a; }
+      button#approve-btn { background: #1a5276; }
+      button#approve-btn:not(:disabled):hover { background: #2471a3; }
       button#connect-btn:not(:disabled):hover { background: #e07010; }
       #wallet-info {
         display: none;
@@ -49,6 +51,34 @@
         font-size: 0.88rem;
       }
       #wallet-info span { color: #f6851b; }
+      /* Contract info panel */
+      #contract-panel {
+        display: none;
+        background: #0a1628;
+        border: 1px solid #1e3a5a;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.85rem;
+        color: #a0c8f0;
+      }
+      #contract-panel strong { color: #6ab0f5; }
+      #contract-address {
+        font-size: 0.8rem;
+        word-break: break-all;
+        color: #8ad4f8;
+      }
+      /* Warning banners */
+      #warnings { margin-bottom: 1rem; }
+      .warning-banner {
+        background: #3a2000;
+        border: 1px solid #7a4800;
+        border-radius: 6px;
+        padding: 0.6rem 1rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+        color: #ffcc80;
+      }
       pre#output {
         background: #0f0f23;
         padding: 1rem;
@@ -95,26 +125,51 @@
       .tx-hash a:hover { text-decoration: underline; }
       .tx-details { color: #c0c0d0; margin: 0.15rem 0; }
       .tx-time { color: #666; font-size: 0.78rem; }
+      .badge-onchain {
+        display: inline-block;
+        background: #1a5276;
+        color: #a9cce3;
+        font-size: 0.72rem;
+        border-radius: 4px;
+        padding: 0.15rem 0.45rem;
+        margin-left: 0.5rem;
+        vertical-align: middle;
+      }
     </style>
   </head>
   <body>
     <div id="app">
-      <h1>MetaMask → Circles USDC Transfer</h1>
-      <p>Connect your MetaMask wallet and transfer 19,800 USDC to the Circles network.</p>
+      <h1>MetaMask → Circles USDC Transfer <span class="badge-onchain">On-Chain</span></h1>
+      <p>Connect your MetaMask wallet and transfer 19,800 USDC to the Circles network via the on-chain <strong>CirclesTransfer</strong> smart contract.</p>
 
+      <!-- Warning banners injected by main.ts -->
+      <div id="warnings"></div>
+
+      <!-- Wallet info -->
       <div id="wallet-info">
         🔑 <strong>Address:</strong> <span id="wallet-address">—</span>
         &nbsp;&nbsp;
         💰 <strong>Balance:</strong> <span id="wallet-balance">—</span>
       </div>
 
+      <!-- On-chain contract info panel -->
+      <div id="contract-panel">
+        📜 <strong>CirclesTransfer Contract:</strong>
+        <div id="contract-address">—</div>
+        <div style="margin-top:0.35rem; color:#7faacc; font-size:0.78rem;">
+          Before transferring, approve the contract to spend your USDC by clicking <em>Approve USDC</em>.
+        </div>
+      </div>
+
+      <!-- Action buttons -->
       <div class="actions">
         <button id="connect-btn">Connect MetaMask</button>
+        <button id="approve-btn" disabled>Approve USDC</button>
         <button id="transfer-btn" disabled>Transfer 19,800 USDC</button>
       </div>
 
       <h2>Gas Payer Address (Optional)</h2>
-      <p>Provide a secondary address to fund gas fees for this transaction. Leave empty to pay gas from your connected wallet.</p>
+      <p>Provide a secondary address to fund gas fees for this transaction. When a contract address is configured, ETH is forwarded via the contract's <code>fundGas()</code> function. Leave empty to pay gas from your connected wallet.</p>
       <div class="gas-payer-section">
         <input
           type="text"
@@ -134,3 +189,4 @@
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
+
