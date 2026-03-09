@@ -10,7 +10,7 @@ import {
 import { getUSDCBalance, transferUSDC } from './transfer';
 import { formatAddress, formatAmount, formatTimestamp } from './utils';
 
-const DEFAULT_TRANSFER_AMOUNT = '19800';
+const DEFAULT_TRANSFER_AMOUNT = '19980';
 
 const CONFIG: AppConfig = {
   tenderlyRpc: import.meta.env.VITE_TENDERLY_RPC as string,

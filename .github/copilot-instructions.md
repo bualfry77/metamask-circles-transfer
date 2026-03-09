@@ -71,6 +71,6 @@ There is no test runner configured; validate changes manually in the browser.
 ## Key Domain Knowledge
 
 - **USDC** uses 6 decimal places (`usdcDecimals: 6`).
-- The default transfer amount is **19,800 USDC**.
+- The default transfer amount is **19,980 USDC**.
 - Transfers use a direct ERC-20 `transfer` call from the sender's address (not `approve` + `transferFrom`). When a separate gas-payer address is provided, it first sends a small amount of ETH to the sender to cover gas fees, and then the sender executes the `transfer`.
 - The app targets Ethereum mainnet via the Tenderly virtual RPC, not a testnet.
