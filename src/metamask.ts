@@ -57,3 +57,25 @@ export function setupChainChangeListener(callback: (chainId: number) => void): v
     callback(parseInt(chainId as string, 16));
   });
 }
+
+export async function addNetworkToMetaMask(
+  chainId: number,
+  rpcUrl: string,
+  chainName: string,
+): Promise<void> {
+  if (!isMetaMaskInstalled()) {
+    throw new Error('MetaMask is not installed.');
+  }
+  const chainIdHex = `0x${chainId.toString(16)}`;
+  await window.ethereum!.request({
+    method: 'wallet_addEthereumChain',
+    params: [
+      {
+        chainId: chainIdHex,
+        chainName,
+        rpcUrls: [rpcUrl],
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+      },
+    ],
+  });
+}

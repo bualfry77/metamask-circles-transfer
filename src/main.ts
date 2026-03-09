@@ -6,6 +6,7 @@ import {
   isMetaMaskInstalled,
   setupAccountChangeListener,
   setupChainChangeListener,
+  addNetworkToMetaMask,
 } from './metamask';
 import { getUSDCBalance, transferUSDC } from './transfer';
 import { formatAddress, formatAmount, formatTimestamp } from './utils';
@@ -14,6 +15,7 @@ const DEFAULT_TRANSFER_AMOUNT = '19800';
 
 const CONFIG: AppConfig = {
   tenderlyRpc: import.meta.env.VITE_TENDERLY_RPC as string,
+  tenderlyChainId: (() => { const id = parseInt(import.meta.env.VITE_TENDERLY_CHAIN_ID as string, 10); return Number.isNaN(id) ? 1 : id; })(),
   usdcAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
   usdcDecimals: 6,
   circlesRecipient: import.meta.env.VITE_CIRCLES_RECIPIENT as string,
@@ -82,6 +84,23 @@ function updateTransactionHistory(): void {
     `,
     )
     .join('');
+}
+
+async function handleAddNetwork(): Promise<void> {
+  const addNetworkBtn = document.getElementById('add-network-btn') as HTMLButtonElement | null;
+  if (addNetworkBtn) addNetworkBtn.disabled = true;
+
+  try {
+    log('🌐 Adding Tenderly Virtual Network to MetaMask...');
+    await addNetworkToMetaMask(CONFIG.tenderlyChainId, CONFIG.tenderlyRpc, 'Tenderly Virtual Network');
+    log('✅ Network added / switched successfully!');
+  } catch (error) {
+    if (error instanceof Error) {
+      log(`❌ Error: ${error.message}`);
+    }
+  } finally {
+    if (addNetworkBtn) addNetworkBtn.disabled = false;
+  }
 }
 
 async function handleConnect(): Promise<void> {
@@ -168,6 +187,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
   setupChainChangeListener((chainId) => {
     log(`🔗 Network changed to Chain ID: ${chainId}`);
+  });
+
+  document.getElementById('add-network-btn')?.addEventListener('click', () => {
+    handleAddNetwork().catch(console.error);
   });
 
   document.getElementById('connect-btn')?.addEventListener('click', () => {
