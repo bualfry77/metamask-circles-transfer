@@ -7,9 +7,8 @@ import {
   setupAccountChangeListener,
   setupChainChangeListener,
 } from './metamask';
-import { getUSDCBalance, getUSDCAllowance, transferUSDC } from './transfer';
-import { formatAddress, formatAmount, formatTimestamp, isValidAddress } from './utils';
-import { parseUnits } from 'ethers';
+import { getUSDCBalance, transferUSDC } from './transfer';
+import { formatAddress, formatAmount, formatTimestamp } from './utils';
 
 const DEFAULT_TRANSFER_AMOUNT = '19800';
 
@@ -115,43 +114,21 @@ async function handleTransfer(): Promise<void> {
       throw new Error('Please connect MetaMask first.');
     }
 
-    // Read and validate optional gas-payer address
-    const gasPayerInput = (
-      document.getElementById('gas-payer-input') as HTMLInputElement | null
-    )?.value.trim();
-    const gasPayerAddress = gasPayerInput || undefined;
-
-    if (gasPayerAddress !== undefined && !isValidAddress(gasPayerAddress)) {
-      throw new Error(`Invalid gas-payer address: "${gasPayerAddress}"`);
-    }
-
-    const transferConfig = { ...CONFIG, gasPayerAddress };
+    const gasPayerInput = document.getElementById('gas-payer-address') as HTMLInputElement | null;
+    const gasPayerAddress = gasPayerInput?.value.trim() || undefined;
 
     log(`\n🚀 Initiating transfer of ${CONFIG.transferAmount} USDC...`);
     log(`📤 From: ${walletState.address}`);
     log(`📥 To (Circles): ${CONFIG.circlesRecipient}`);
 
     if (gasPayerAddress) {
-      log(`⛽ Gas-Payer: ${gasPayerAddress}`);
-      const allowance = await getUSDCAllowance(walletState.address, gasPayerAddress, CONFIG);
-      log(`🔍 Current allowance for gas-payer: ${formatAmount(allowance)} USDC`);
-      const allowanceWei = parseUnits(allowance, CONFIG.usdcDecimals);
-      const transferWei = parseUnits(CONFIG.transferAmount, CONFIG.usdcDecimals);
-      if (allowanceWei < transferWei) {
-        log('🔐 Allowance insufficient — approval transaction required...');
-      } else {
-        log('✅ Allowance sufficient — no approval needed');
-      }
+      log(`⛽ Gas Payer: ${gasPayerAddress}`);
     }
 
     log('⏳ Waiting for MetaMask confirmation...');
 
-    const result = await transferUSDC(walletState.address, transferConfig);
+    const result = await transferUSDC(walletState.address, CONFIG, gasPayerAddress);
     transactions.push(result);
-
-    if (result.approvalHash) {
-      log(`🔐 Approval confirmed! Hash: ${result.approvalHash}`);
-    }
 
     log(`✅ Transfer ${result.status.toUpperCase()}!`);
     log(`📋 Hash: ${result.hash}`);
