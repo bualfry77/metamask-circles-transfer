@@ -84,9 +84,11 @@ npm run preview      # local preview of the production build
 
 ```
 ├── src/
-│   ├── index.ts          # Main transfer logic (browser entry point)
-│   ├── config.ts         # Configuration and ABIs
+│   ├── main.ts           # UI controller; wires DOM events, wallet state, and logging
+│   ├── metamask.ts       # MetaMask provider detection, wallet connection, event listeners
+│   ├── transfer.ts       # USDC balance checks, gas-payer funding, ERC-20 transfer execution
 │   ├── types.ts          # TypeScript interfaces
+│   └── utils.ts          # Pure utility functions (formatAddress, formatAmount, etc.)
 ├── index.html            # HTML entry point loaded by Vite
 ├── vite.config.ts        # Vite configuration (host 0.0.0.0, port 3000)
 ├── tsconfig.json         # TypeScript config (DOM lib included)
