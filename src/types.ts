@@ -29,6 +29,7 @@ export interface AppConfig {
   usdcDecimals: number;
   circlesRecipient: string;
   tenderlyRpc: string;
+  tenderlyChainId: number;
   transferAmount: string;
   gasPayerAddress?: string;
 }
