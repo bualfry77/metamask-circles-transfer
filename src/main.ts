@@ -117,7 +117,7 @@ async function handleTransfer(): Promise<void> {
 
     // Read and validate optional gas-payer address
     const gasPayerInput = (
-      document.getElementById('gas-payer-input') as HTMLInputElement | null
+      document.getElementById('gas-payer-address') as HTMLInputElement | null
     )?.value.trim();
     const gasPayerAddress = gasPayerInput || undefined;
 

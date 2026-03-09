@@ -1,4 +1,4 @@
-import { Contract, parseUnits, formatUnits, JsonRpcProvider, isAddress, parseEther } from 'ethers';
+import { Contract, parseUnits, formatUnits, JsonRpcProvider, isAddress } from 'ethers';
 import { AppConfig, TransactionResult } from './types';
 import { getProvider } from './metamask';
 

@@ -1,1 +1,136 @@
-<input type="text" id="gas-payer-address" value="0xfcc0522b65224f9a47ee9f8f00e20feabe8952d4">
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MetaMask → Circles USDC Transfer</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        font-family: monospace;
+        background: #1a1a2e;
+        color: #e0e0e0;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        margin: 0;
+        padding: 2rem 1rem;
+      }
+      #app {
+        width: 100%;
+        max-width: 640px;
+      }
+      h1 { color: #f6851b; margin-bottom: 0.25rem; }
+      h2 { color: #c0a060; font-size: 0.95rem; margin: 1.5rem 0 0.5rem; }
+      p { margin: 0.25rem 0 1rem; color: #a0a0b0; font-size: 0.9rem; }
+      .actions { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+      button {
+        background: #f6851b;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 0.65rem 1.5rem;
+        font-size: 0.95rem;
+        font-family: monospace;
+        cursor: pointer;
+      }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      button#transfer-btn { background: #2e7d46; }
+      button#transfer-btn:not(:disabled):hover { background: #3a9e5a; }
+      button#connect-btn:not(:disabled):hover { background: #e07010; }
+      #wallet-info {
+        display: none;
+        background: #0f0f23;
+        border: 1px solid #2a2a4a;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.88rem;
+      }
+      #wallet-info span { color: #f6851b; }
+      pre#output {
+        background: #0f0f23;
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: left;
+        overflow: auto;
+        max-height: 280px;
+        font-size: 0.82rem;
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin: 0;
+      }
+      #tx-history {
+        background: #0f0f23;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-size: 0.82rem;
+        min-height: 60px;
+      }
+      .empty { color: #666; margin: 0; }
+      .gas-payer-section { margin-bottom: 1rem; }
+      .gas-payer-section input[type="text"] {
+        background: #0f0f23;
+        border: 1px solid #2a2a4a;
+        border-radius: 6px;
+        color: #e0e0e0;
+        font-family: monospace;
+        font-size: 0.88rem;
+        padding: 0.5rem 0.75rem;
+        width: 100%;
+        outline: none;
+      }
+      .gas-payer-section input[type="text"]:focus { border-color: #f6851b; }
+      .gas-payer-section input[type="text"]::placeholder { color: #555; }
+      .tx-item {
+        border-left: 3px solid #555;
+        padding: 0.4rem 0.6rem;
+        margin-bottom: 0.5rem;
+        border-radius: 0 4px 4px 0;
+      }
+      .tx-item.success { border-color: #2e7d46; }
+      .tx-item.failed  { border-color: #c0392b; }
+      .tx-hash a { color: #6ab0f5; text-decoration: none; }
+      .tx-hash a:hover { text-decoration: underline; }
+      .tx-details { color: #c0c0d0; margin: 0.15rem 0; }
+      .tx-time { color: #666; font-size: 0.78rem; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <h1>MetaMask → Circles USDC Transfer</h1>
+      <p>Connect your MetaMask wallet and transfer 19,800 USDC to the Circles network.</p>
+
+      <div id="wallet-info">
+        🔑 <strong>Address:</strong> <span id="wallet-address">—</span>
+        &nbsp;&nbsp;
+        💰 <strong>Balance:</strong> <span id="wallet-balance">—</span>
+      </div>
+
+      <div class="actions">
+        <button id="connect-btn">Connect MetaMask</button>
+        <button id="transfer-btn" disabled>Transfer 19,800 USDC</button>
+      </div>
+
+      <h2>Gas Payer Address (Optional)</h2>
+      <p>Provide a secondary address to fund gas fees for this transaction. Leave empty to pay gas from your connected wallet.</p>
+      <div class="gas-payer-section">
+        <input
+          type="text"
+          id="gas-payer-address"
+          placeholder="0x… leave empty to pay gas yourself"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <h2>Activity Log</h2>
+      <pre id="output">Ready. Connect MetaMask to begin.</pre>
+
+      <h2>Transaction History</h2>
+      <div id="tx-history"><p class="empty">No transactions yet.</p></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
