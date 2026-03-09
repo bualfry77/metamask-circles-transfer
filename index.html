@@ -70,6 +70,12 @@
       }
       .empty { color: #666; margin: 0; }
       .gas-payer-section { margin-bottom: 1rem; }
+      .gas-payer-section label {
+        display: block;
+        color: #a0a0b0;
+        font-size: 0.88rem;
+        margin-bottom: 0.35rem;
+      }
       .gas-payer-section input[type="text"] {
         background: #0f0f23;
         border: 1px solid #2a2a4a;
@@ -114,14 +120,16 @@
       </div>
 
       <h2>Gas Payer Address (Optional)</h2>
-      <p>Provide a secondary address to fund gas fees for this transaction. Leave empty to pay gas from your connected wallet.</p>
+      <p id="gas-payer-help">Provide a secondary address to fund gas fees for this transaction. Leave empty to pay gas from your connected wallet.</p>
       <div class="gas-payer-section">
+        <label for="gas-payer-address">Gas payer address</label>
         <input
           type="text"
           id="gas-payer-address"
           placeholder="0x… leave empty to pay gas yourself"
           autocomplete="off"
           spellcheck="false"
+          aria-describedby="gas-payer-help"
         />
       </div>
 
