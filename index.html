@@ -36,6 +36,7 @@
         cursor: pointer;
       }
       button:disabled { opacity: 0.45; cursor: not-allowed; }
+      input:disabled { opacity: 0.45; cursor: not-allowed; }
       button#transfer-btn { background: #2e7d46; }
       button#transfer-btn:not(:disabled):hover { background: #3a9e5a; }
       button#connect-btn:not(:disabled):hover { background: #e07010; }
@@ -109,7 +110,7 @@
       </div>
 
       <div class="actions">
-        <button id="connect-btn">Connect MetaMask</button>
+        <button id="connect-btn" disabled>Connect MetaMask</button>
         <button id="transfer-btn" disabled>Transfer 19,800 USDC</button>
       </div>
 
@@ -122,6 +123,7 @@
           placeholder="0x… leave empty to pay gas yourself"
           autocomplete="off"
           spellcheck="false"
+          disabled
         />
       </div>
 
