@@ -1,11 +1,11 @@
 # MetaMask → Circles USDC Transfer
 
-Transfer 19,800 USDC from MetaMask wallet to Circles network using Tenderly RPC endpoint.
+Transfer 19,980 USDC from MetaMask wallet to Circles network using Tenderly RPC endpoint.
 
 ## Features
 
 ✅ **MetaMask Integration** - Connect securely via MetaMask  
-✅ **19,800 USDC Transfer** - Pre-configured for your amount  
+✅ **19,980 USDC Transfer** - Pre-configured for your amount  
 ✅ **Tenderly RPC** - Uses virtual mainnet via Tenderly  
 ✅ **Circles Network** - Direct integration with Circles Seed  
 ✅ **Error Handling** - Comprehensive error messages  
@@ -16,7 +16,7 @@ Transfer 19,800 USDC from MetaMask wallet to Circles network using Tenderly RPC 
 
 - Node.js 18+ installed
 - MetaMask browser extension installed in the browser you will use
-- 19,800 USDC in your MetaMask wallet
+- 19,980 USDC in your MetaMask wallet
 - Circles recipient address configured
 
 ## Installation & Running (local or Codespaces)
@@ -74,7 +74,7 @@ npm run preview      # local preview of the production build
 ## How It Works
 
 1. **Connect MetaMask** – Page loads and requests account access via MetaMask
-2. **Check Balance** – Verifies you have 19,800 USDC on the connected account
+2. **Check Balance** – Verifies you have 19,980 USDC on the connected account
 3. **Initiate Transfer** – Sends transfer transaction via MetaMask signer
 4. **MetaMask Approval** – Confirm transaction in the MetaMask popup
 5. **Confirmation** – Waits for on-chain confirmation
@@ -98,7 +98,7 @@ npm run preview      # local preview of the production build
 
 ## Transaction Details
 
-- **Amount**: 19,800 USDC
+- **Amount**: 19,980 USDC
 - **From**: Your MetaMask address
 - **To**: Your Circles recipient address
 - **Network**: Ethereum (via Tenderly RPC)
@@ -124,7 +124,7 @@ This is already configured in the repo.
 - Address must be 42 characters (`0x` + 40 hex characters)
 
 ### "Insufficient funds"
-- Ensure you have at least 19,800 USDC
+- Ensure you have at least 19,980 USDC
 - Check gas fees (a small amount of ETH for gas)
 
 ## Security Notes

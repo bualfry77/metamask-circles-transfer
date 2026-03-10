@@ -31,6 +31,7 @@ export async function connectWallet(): Promise<WalletState> {
   return {
     address: accounts[0]!,
     usdcBalance: '0',
+    ethBalance: '0',
     isConnected: true,
   };
 }

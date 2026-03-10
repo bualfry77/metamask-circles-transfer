@@ -8,21 +8,21 @@ import {
   setupChainChangeListener,
   addNetworkToMetaMask,
 } from './metamask';
-import { getUSDCBalance, transferUSDC } from './transfer';
+import { getETHBalance, getUSDCBalance, transferUSDC } from './transfer';
 import { formatAddress, formatAmount, formatTimestamp } from './utils';
 
-const DEFAULT_TRANSFER_AMOUNT = '19800';
+const DEFAULT_TRANSFER_AMOUNT = '19980';
 
 const CONFIG: AppConfig = {
   tenderlyRpc: import.meta.env.VITE_TENDERLY_RPC as string,
-  tenderlyChainId: (() => { const id = parseInt(import.meta.env.VITE_TENDERLY_CHAIN_ID as string, 10); return Number.isNaN(id) ? 1 : id; })(),
+  tenderlyChainId: (() => { const id = parseInt(import.meta.env.VITE_TENDERLY_CHAIN_ID as string, 10); return Number.isNaN(id) || id === 1 ? 73571 : id; })(),
   usdcAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
   usdcDecimals: 6,
   circlesRecipient: import.meta.env.VITE_CIRCLES_RECIPIENT as string,
   transferAmount: DEFAULT_TRANSFER_AMOUNT,
 };
 
-let walletState: WalletState = { address: null, usdcBalance: '0', isConnected: false };
+let walletState: WalletState = { address: null, usdcBalance: '0', ethBalance: '0', isConnected: false };
 const transactions: TransactionResult[] = [];
 
 function log(message: string): void {
@@ -38,6 +38,7 @@ function updateWalletUI(): void {
   const walletInfo = document.getElementById('wallet-info');
   const addressEl = document.getElementById('wallet-address');
   const balanceEl = document.getElementById('wallet-balance');
+  const ethBalanceEl = document.getElementById('wallet-eth-balance');
   const connectBtn = document.getElementById('connect-btn') as HTMLButtonElement | null;
   const transferBtn = document.getElementById('transfer-btn') as HTMLButtonElement | null;
 
@@ -45,6 +46,7 @@ function updateWalletUI(): void {
     if (walletInfo) walletInfo.style.display = 'block';
     if (addressEl) addressEl.textContent = formatAddress(walletState.address);
     if (balanceEl) balanceEl.textContent = `${formatAmount(walletState.usdcBalance)} USDC`;
+    if (ethBalanceEl) ethBalanceEl.textContent = `${parseFloat(walletState.ethBalance).toFixed(4)} ETH`;
     if (connectBtn) connectBtn.textContent = 'Connected ✓';
     if (transferBtn) transferBtn.disabled = false;
   } else {
@@ -111,9 +113,13 @@ async function handleConnect(): Promise<void> {
     log('🔌 Connecting to MetaMask...');
     walletState = await connectWallet();
     log(`✅ Connected: ${walletState.address}`);
-    log('💰 Fetching USDC balance...');
-    walletState.usdcBalance = await getUSDCBalance(walletState.address!, CONFIG);
-    log(`💰 Balance: ${formatAmount(walletState.usdcBalance)} USDC`);
+    log('⟳ Fetching wallet balances...');
+    [walletState.ethBalance, walletState.usdcBalance] = await Promise.all([
+      getETHBalance(walletState.address!, CONFIG),
+      getUSDCBalance(walletState.address!, CONFIG),
+    ]);
+    log(`⚡ ETH Balance: ${parseFloat(walletState.ethBalance).toFixed(4)} ETH`);
+    log(`💰 USDC Balance: ${formatAmount(walletState.usdcBalance)} USDC`);
     updateWalletUI();
   } catch (error) {
     if (error instanceof Error) {
@@ -155,6 +161,7 @@ async function handleTransfer(): Promise<void> {
     log(`⛽ Gas Used: ${result.gasUsed}`);
 
     walletState.usdcBalance = await getUSDCBalance(walletState.address, CONFIG);
+    walletState.ethBalance = await getETHBalance(walletState.address, CONFIG);
     updateWalletUI();
     updateTransactionHistory();
   } catch (error) {
@@ -171,12 +178,19 @@ window.addEventListener('DOMContentLoaded', () => {
     log('⚠️  MetaMask is not installed. Please install it from https://metamask.io');
   }
 
+  // Pre-fill gas payer address from environment if configured
+  const defaultGasPayer = import.meta.env.VITE_GAS_PAYER_ADDRESS as string | undefined;
+  if (defaultGasPayer) {
+    const gasPayerInput = document.getElementById('gas-payer-address') as HTMLInputElement | null;
+    if (gasPayerInput) gasPayerInput.value = defaultGasPayer;
+  }
+
   updateWalletUI();
   updateTransactionHistory();
 
   setupAccountChangeListener((accounts) => {
     if (accounts.length === 0) {
-      walletState = { address: null, usdcBalance: '0', isConnected: false };
+      walletState = { address: null, usdcBalance: '0', ethBalance: '0', isConnected: false };
       log('👤 Wallet disconnected');
     } else {
       walletState.address = accounts[0]!;
