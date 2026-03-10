@@ -21,6 +21,7 @@ export interface TransactionResult {
 export interface WalletState {
   address: string | null;
   usdcBalance: string;
+  ethBalance: string;
   isConnected: boolean;
 }
 

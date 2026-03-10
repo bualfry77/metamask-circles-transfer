@@ -18,6 +18,12 @@ const USDC_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)',
 ];
 
+export async function getETHBalance(address: string, config: AppConfig): Promise<string> {
+  const provider = new JsonRpcProvider(config.tenderlyRpc);
+  const balance = await provider.getBalance(address);
+  return formatEther(balance);
+}
+
 export async function getUSDCBalance(address: string, config: AppConfig): Promise<string> {
   const provider = new JsonRpcProvider(config.tenderlyRpc);
   const usdcContract = new Contract(config.usdcAddress, USDC_ABI, provider);
