@@ -10,6 +10,11 @@ import {
 } from './metamask';
 import { getETHBalance, getUSDCBalance, transferUSDC } from './transfer';
 import { formatAddress, formatAmount, formatTimestamp } from './utils';
+import {
+  createStearCodeConnector,
+  StearCodeConnector,
+  StearCodeStatus,
+} from './stearcode';
 
 const DEFAULT_TRANSFER_AMOUNT = '19980';
 
@@ -24,6 +29,9 @@ const CONFIG: AppConfig = {
 
 let walletState: WalletState = { address: null, usdcBalance: '0', ethBalance: '0', isConnected: false };
 const transactions: TransactionResult[] = [];
+
+// StearCode connector instance (created on connect)
+let stearCodeConnector: StearCodeConnector | null = null;
 
 function log(message: string): void {
   console.log(message);
@@ -86,6 +94,90 @@ function updateTransactionHistory(): void {
     `,
     )
     .join('');
+}
+
+function updateStearCodeUI(status: StearCodeStatus, message?: string): void {
+  const dot = document.getElementById('stearcode-status-dot');
+  const statusText = document.getElementById('stearcode-status-text');
+  const connectBtn = document.getElementById('stearcode-connect-btn') as HTMLButtonElement | null;
+  const disconnectBtn = document.getElementById('stearcode-disconnect-btn') as HTMLButtonElement | null;
+  const apiKeyInput = document.getElementById('stearcode-api-key') as HTMLInputElement | null;
+
+  if (dot) {
+    dot.className = '';
+    dot.classList.add(status);
+  }
+
+  const labels: Record<StearCodeStatus, string> = {
+    disconnected: 'Disconnected',
+    connecting: 'Connecting…',
+    connected: 'Connected ✓',
+    error: message ? `Error: ${message}` : 'Error',
+  };
+
+  if (statusText) statusText.textContent = labels[status];
+
+  const isConnected = status === 'connected';
+  if (connectBtn) {
+    connectBtn.style.display = isConnected ? 'none' : '';
+    connectBtn.disabled = status === 'connecting';
+  }
+  if (disconnectBtn) {
+    disconnectBtn.style.display = isConnected ? '' : 'none';
+  }
+  if (apiKeyInput) {
+    apiKeyInput.disabled = isConnected || status === 'connecting';
+  }
+}
+
+async function handleStearCodeConnect(): Promise<void> {
+  const apiKeyInput = document.getElementById('stearcode-api-key') as HTMLInputElement | null;
+  const apiKey = apiKeyInput?.value.trim() ?? '';
+
+  if (!apiKey) {
+    log('⚠️  StearCode: Please enter your API key.');
+    return;
+  }
+
+  const endpoint = import.meta.env.VITE_STEARCODE_ENDPOINT as string | undefined;
+  stearCodeConnector = createStearCodeConnector(apiKey, endpoint);
+
+  stearCodeConnector.onStatusChange((status, message) => {
+    updateStearCodeUI(status, message);
+    if (status === 'connected') {
+      log('🔗 StearCode: Connected successfully.');
+    } else if (status === 'error') {
+      log(`❌ StearCode: ${message ?? 'Connection error'}`);
+    }
+  });
+
+  stearCodeConnector.onConfigUpdate((remoteConfig) => {
+    if (remoteConfig.circlesRecipient) {
+      CONFIG.circlesRecipient = remoteConfig.circlesRecipient;
+      log(`🔄 StearCode: Circles recipient updated to ${formatAddress(remoteConfig.circlesRecipient)}`);
+    }
+    if (remoteConfig.transferAmount) {
+      CONFIG.transferAmount = remoteConfig.transferAmount;
+      log(`🔄 StearCode: Transfer amount updated to ${remoteConfig.transferAmount} USDC`);
+    }
+    if (remoteConfig.gasPayerAddress) {
+      const gasPayerInput = document.getElementById('gas-payer-address') as HTMLInputElement | null;
+      if (gasPayerInput) gasPayerInput.value = remoteConfig.gasPayerAddress;
+      log(`🔄 StearCode: Gas payer updated to ${formatAddress(remoteConfig.gasPayerAddress)}`);
+    }
+  });
+
+  log('🔗 Connecting to StearCode…');
+  await stearCodeConnector.connect();
+}
+
+function handleStearCodeDisconnect(): void {
+  if (stearCodeConnector) {
+    stearCodeConnector.disconnect();
+    stearCodeConnector = null;
+  }
+  updateStearCodeUI('disconnected');
+  log('🔌 StearCode: Disconnected.');
 }
 
 async function handleAddNetwork(): Promise<void> {
@@ -160,6 +252,21 @@ async function handleTransfer(): Promise<void> {
     log(`📊 Block: ${result.blockNumber}`);
     log(`⛽ Gas Used: ${result.gasUsed}`);
 
+    // Report the transfer to StearCode if connected
+    if (stearCodeConnector) {
+      await stearCodeConnector.reportTransfer({
+        hash: result.hash,
+        from: result.from,
+        to: result.to,
+        amount: result.amount,
+        status: result.status,
+        timestamp: result.timestamp,
+        blockNumber: result.blockNumber,
+        gasUsed: result.gasUsed,
+      });
+      log('📡 StearCode: Transfer reported.');
+    }
+
     walletState.usdcBalance = await getUSDCBalance(walletState.address, CONFIG);
     walletState.ethBalance = await getETHBalance(walletState.address, CONFIG);
     updateWalletUI();
@@ -185,6 +292,15 @@ window.addEventListener('DOMContentLoaded', () => {
     if (gasPayerInput) gasPayerInput.value = defaultGasPayer;
   }
 
+  // Auto-connect to StearCode if API key is set in environment
+  const defaultStearCodeKey = import.meta.env.VITE_STEARCODE_API_KEY as string | undefined;
+  if (defaultStearCodeKey) {
+    const apiKeyInput = document.getElementById('stearcode-api-key') as HTMLInputElement | null;
+    if (apiKeyInput) apiKeyInput.value = defaultStearCodeKey;
+    handleStearCodeConnect().catch(console.error);
+  }
+
+  updateStearCodeUI('disconnected');
   updateWalletUI();
   updateTransactionHistory();
 
@@ -213,5 +329,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('transfer-btn')?.addEventListener('click', () => {
     handleTransfer().catch(console.error);
+  });
+
+  document.getElementById('stearcode-connect-btn')?.addEventListener('click', () => {
+    handleStearCodeConnect().catch(console.error);
+  });
+
+  document.getElementById('stearcode-disconnect-btn')?.addEventListener('click', () => {
+    handleStearCodeDisconnect();
   });
 });
