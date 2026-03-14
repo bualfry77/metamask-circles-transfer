@@ -34,3 +34,14 @@ export interface AppConfig {
   transferAmount: string;
   gasPayerAddress?: string;
 }
+
+export interface CirclesAvatarStatus {
+  address: string;
+  isRegistered: boolean;
+  avatarType?: string;
+  version?: number;
+  hasV1?: boolean;
+  isHuman?: boolean;
+  balanceV1?: string;
+  balanceV2?: string;
+}
