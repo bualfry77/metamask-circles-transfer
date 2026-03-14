@@ -41,6 +41,52 @@
       button#connect-btn:not(:disabled):hover { background: #e07010; }
       button#add-network-btn { background: #1a6fa8; }
       button#add-network-btn:not(:disabled):hover { background: #2285cc; }
+      button#stearcode-connect-btn { background: #5a3e8a; }
+      button#stearcode-connect-btn:not(:disabled):hover { background: #7350b5; }
+      button#stearcode-disconnect-btn { background: #555; }
+      button#stearcode-disconnect-btn:not(:disabled):hover { background: #777; }
+      #stearcode-panel {
+        background: #0f0f23;
+        border: 1px solid #3a2a5a;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1.25rem;
+      }
+      #stearcode-panel .sc-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        font-weight: bold;
+        color: #c0a0e0;
+      }
+      #stearcode-status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #555;
+        flex-shrink: 0;
+      }
+      #stearcode-status-dot.connecting { background: #e0a030; }
+      #stearcode-status-dot.connected  { background: #2e7d46; }
+      #stearcode-status-dot.error      { background: #c0392b; }
+      #stearcode-status-text { font-size: 0.82rem; color: #a080c0; }
+      #stearcode-panel input[type="text"] {
+        background: #1a1a3a;
+        border: 1px solid #3a2a5a;
+        border-radius: 6px;
+        color: #e0e0e0;
+        font-family: monospace;
+        font-size: 0.85rem;
+        padding: 0.45rem 0.7rem;
+        width: 100%;
+        outline: none;
+        margin-bottom: 0.6rem;
+      }
+      #stearcode-panel input[type="text"]:focus { border-color: #9060d0; }
+      #stearcode-panel input[type="text"]::placeholder { color: #555; }
+      .sc-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
       #wallet-info {
         display: none;
         background: #0f0f23;
@@ -116,6 +162,27 @@
         <button id="add-network-btn">Add Network to MetaMask</button>
         <button id="connect-btn">Connect MetaMask</button>
         <button id="transfer-btn" disabled>Transfer 19,980 USDC</button>
+      </div>
+
+      <h2>StearCode Integration</h2>
+      <p>Connect to the <a href="https://stearcode.com" target="_blank" rel="noopener noreferrer" style="color:#9060d0;">StearCode</a> platform to sync configuration and report transfers.</p>
+      <div id="stearcode-panel">
+        <div class="sc-header">
+          <span id="stearcode-status-dot"></span>
+          StearCode
+          <span id="stearcode-status-text">Disconnected</span>
+        </div>
+        <input
+          type="text"
+          id="stearcode-api-key"
+          placeholder="StearCode API key (sk-…)"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <div class="sc-row">
+          <button id="stearcode-connect-btn">Connect to StearCode</button>
+          <button id="stearcode-disconnect-btn" style="display:none;">Disconnect</button>
+        </div>
       </div>
 
       <h2>Gas Payer Address (Optional)</h2>
