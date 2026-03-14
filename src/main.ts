@@ -10,6 +10,14 @@ import {
 } from './metamask';
 import { getETHBalance, getUSDCBalance, transferUSDC } from './transfer';
 import { formatAddress, formatAmount, formatTimestamp } from './utils';
+import {
+  checkCirclesStatus,
+  initCirclesSdk,
+  getSdkMintableAmount,
+  mintCirclesCRC,
+  addGnosisChainToMetaMask,
+} from './circles';
+import type { Sdk } from '@circles-sdk/sdk';
 
 const DEFAULT_TRANSFER_AMOUNT = '19980';
 
@@ -24,6 +32,7 @@ const CONFIG: AppConfig = {
 
 let walletState: WalletState = { address: null, usdcBalance: '0', ethBalance: '0', isConnected: false };
 const transactions: TransactionResult[] = [];
+let circlesSdk: Sdk | null = null;
 
 function log(message: string): void {
   console.log(message);
@@ -173,6 +182,107 @@ async function handleTransfer(): Promise<void> {
   }
 }
 
+async function handleCheckCircles(): Promise<void> {
+  const checkCirclesBtn = document.getElementById('check-circles-btn') as HTMLButtonElement | null;
+  if (checkCirclesBtn) checkCirclesBtn.disabled = true;
+
+  try {
+    if (!walletState.isConnected || !walletState.address) {
+      throw new Error('Please connect MetaMask first.');
+    }
+
+    log('\n🔵 Checking Circles status on Gnosis Chain...');
+    const status = await checkCirclesStatus(walletState.address);
+
+    const circlesInfoEl = document.getElementById('circles-info');
+    const circlesStatusEl = document.getElementById('circles-status');
+
+    if (!status.isRegistered) {
+      log('ℹ️  Address is not registered on Circles.');
+      if (circlesStatusEl) circlesStatusEl.textContent = 'Not registered on Circles';
+      if (circlesInfoEl) {
+        circlesInfoEl.style.display = 'block';
+        circlesInfoEl.innerHTML = `
+          <div>🔴 <strong>Status:</strong> Not registered on Circles</div>
+          <div style="margin-top:0.4rem; color:#a0a0b0; font-size:0.85rem;">
+            Visit <a href="https://aboutcircles.com" target="_blank" rel="noopener noreferrer" style="color:#6ab0f5;">aboutcircles.com</a> to sign up.
+          </div>`;
+      }
+    } else {
+      log(`✅ Registered on Circles!`);
+      log(`   Type: ${status.avatarType}`);
+      log(`   CRC v1 balance: ${status.balanceV1} CRC`);
+      log(`   CRC v2 balance: ${status.balanceV2} CRC`);
+
+      if (circlesInfoEl) {
+        circlesInfoEl.style.display = 'block';
+        circlesInfoEl.innerHTML = `
+          <div>🟢 <strong>Status:</strong> Registered &nbsp;|&nbsp; ${status.avatarType}</div>
+          <div>🪙 <strong>CRC v1:</strong> ${parseFloat(status.balanceV1 ?? '0').toFixed(2)} CRC</div>
+          <div>🪙 <strong>CRC v2:</strong> ${parseFloat(status.balanceV2 ?? '0').toFixed(2)} CRC</div>`;
+
+        if (status.isHuman) {
+          const mintBtn = document.getElementById('mint-crc-btn') as HTMLButtonElement | null;
+          if (mintBtn) mintBtn.style.display = 'inline-block';
+        }
+      }
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      log(`❌ Circles check error: ${error.message}`);
+    }
+  } finally {
+    if (checkCirclesBtn) checkCirclesBtn.disabled = false;
+  }
+}
+
+async function handleAddGnosisChain(): Promise<void> {
+  const addGnosisBtn = document.getElementById('add-gnosis-btn') as HTMLButtonElement | null;
+  if (addGnosisBtn) addGnosisBtn.disabled = true;
+
+  try {
+    log('🌿 Adding Gnosis Chain to MetaMask...');
+    await addGnosisChainToMetaMask();
+    log('✅ Gnosis Chain added / switched successfully!');
+  } catch (error) {
+    if (error instanceof Error) {
+      log(`❌ Error: ${error.message}`);
+    }
+  } finally {
+    if (addGnosisBtn) addGnosisBtn.disabled = false;
+  }
+}
+
+async function handleMintCRC(): Promise<void> {
+  const mintCrcBtn = document.getElementById('mint-crc-btn') as HTMLButtonElement | null;
+  if (mintCrcBtn) mintCrcBtn.disabled = true;
+
+  try {
+    if (!walletState.isConnected) {
+      throw new Error('Please connect MetaMask first.');
+    }
+
+    log('\n🌱 Initialising Circles SDK (MetaMask must be on Gnosis Chain)...');
+    circlesSdk = await initCirclesSdk();
+
+    const mintable = await getSdkMintableAmount(circlesSdk);
+    if (mintable <= 0) {
+      log('ℹ️  No CRC available to mint right now.');
+      return;
+    }
+
+    log(`⏳ Minting ${mintable.toFixed(2)} CRC — waiting for MetaMask confirmation...`);
+    const txHash = await mintCirclesCRC(circlesSdk);
+    log(`✅ CRC minted! Tx hash: ${txHash}`);
+  } catch (error) {
+    if (error instanceof Error) {
+      log(`❌ Mint error: ${error.message}`);
+    }
+  } finally {
+    if (mintCrcBtn) mintCrcBtn.disabled = false;
+  }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   if (!isMetaMaskInstalled()) {
     log('⚠️  MetaMask is not installed. Please install it from https://metamask.io');
@@ -213,5 +323,17 @@ window.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('transfer-btn')?.addEventListener('click', () => {
     handleTransfer().catch(console.error);
+  });
+
+  document.getElementById('add-gnosis-btn')?.addEventListener('click', () => {
+    handleAddGnosisChain().catch(console.error);
+  });
+
+  document.getElementById('check-circles-btn')?.addEventListener('click', () => {
+    handleCheckCircles().catch(console.error);
+  });
+
+  document.getElementById('mint-crc-btn')?.addEventListener('click', () => {
+    handleMintCRC().catch(console.error);
   });
 });

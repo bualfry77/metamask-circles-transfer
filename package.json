@@ -8,6 +8,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@circles-sdk/adapter-ethers": "^0.29.2",
+    "@circles-sdk/sdk": "^0.29.2",
     "ethers": "^6.10.0"
   },
   "devDependencies": {

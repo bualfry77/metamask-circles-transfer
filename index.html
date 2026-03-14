@@ -85,6 +85,23 @@
       }
       .gas-payer-section input[type="text"]:focus { border-color: #f6851b; }
       .gas-payer-section input[type="text"]::placeholder { color: #555; }
+      button#add-gnosis-btn { background: #4f46b8; }
+      button#add-gnosis-btn:not(:disabled):hover { background: #6359d4; }
+      button#check-circles-btn { background: #1a7a6e; }
+      button#check-circles-btn:not(:disabled):hover { background: #229988; }
+      button#mint-crc-btn { background: #7c5c1e; display: none; }
+      button#mint-crc-btn:not(:disabled):hover { background: #9e7828; }
+      #circles-info {
+        display: none;
+        background: #0f0f23;
+        border: 1px solid #2a2a4a;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.88rem;
+        line-height: 1.7;
+      }
+      #circles-info a { color: #6ab0f5; }
       .tx-item {
         border-left: 3px solid #555;
         padding: 0.4rem 0.6rem;
@@ -129,6 +146,15 @@
           spellcheck="false"
         />
       </div>
+
+      <h2>Circles Network</h2>
+      <p>Check whether your wallet is registered on the Circles protocol (Gnosis Chain) and interact with your CRC tokens.</p>
+      <div class="actions">
+        <button id="add-gnosis-btn">Add Gnosis Chain</button>
+        <button id="check-circles-btn">Check Circles Status</button>
+        <button id="mint-crc-btn">Mint CRC</button>
+      </div>
+      <div id="circles-info"></div>
 
       <h2>Activity Log</h2>
       <pre id="output">Ready. Connect MetaMask to begin.</pre>
