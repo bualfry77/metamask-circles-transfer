@@ -1,4 +1,4 @@
-import { Contract, parseUnits, formatUnits, JsonRpcProvider, isAddress, parseEther } from 'ethers';
+import { Contract, parseUnits, formatUnits, JsonRpcProvider, isAddress, parseEther, getAddress } from 'ethers';
 import { AppConfig, TransactionResult } from './types';
 import { getProvider } from './metamask';
 
@@ -62,18 +62,25 @@ export async function transferUSDC(
       throw new Error(`Invalid gas-payer address: ${config.gasPayerAddress}`);
     }
 
-    // Check existing allowance — approve if the gas payer is not yet authorised
-    const currentAllowance = await readonlyContract.allowance(
-      fromAddress,
-      config.gasPayerAddress,
-    );
-    if (currentAllowance < amountInWei) {
-      const approveTx = await usdcContract.approve(config.gasPayerAddress, amountInWei);
-      const approveReceipt = await approveTx.wait();
-      if (!approveReceipt || approveReceipt.status !== 1) {
-        throw new Error('USDC approval transaction failed');
+    // Normalise addresses to checksummed format for reliable comparison
+    const normalizedFromAddress = getAddress(fromAddress);
+    const normalizedGasPayerAddress = getAddress(config.gasPayerAddress);
+
+    // Skip approval/allowance when the gas payer is the same as the sender
+    if (normalizedFromAddress !== normalizedGasPayerAddress) {
+      // Check existing allowance — approve if the gas payer is not yet authorised
+      const currentAllowance = await readonlyContract.allowance(
+        fromAddress,
+        config.gasPayerAddress,
+      );
+      if (currentAllowance < amountInWei) {
+        const approveTx = await usdcContract.approve(config.gasPayerAddress, amountInWei);
+        const approveReceipt = await approveTx.wait();
+        if (!approveReceipt || approveReceipt.status !== 1) {
+          throw new Error('USDC approval transaction failed');
+        }
+        approvalHash = approveTx.hash;
       }
-      approvalHash = approveTx.hash;
     }
   }
 
