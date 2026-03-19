@@ -1,0 +1,14 @@
+{
+  "name": "auto-transfer",
+  "version": "1.0.0",
+  "description": "Automated USDC transfer script for Circles Network",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ethers": "^6.10.0"
+  }
+}
