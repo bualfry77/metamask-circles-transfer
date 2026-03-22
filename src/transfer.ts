@@ -63,6 +63,16 @@ export async function transferUSDC(
     const normalizedSender = getAddress(fromAddress);
 
     if (normalizedGasPayer !== normalizedSender) {
+      // Verify the gas payer account is connected/authorized in MetaMask
+      try {
+        await provider.getSigner(normalizedGasPayer);
+      } catch {
+        throw new Error(
+          `Gas payer address ${gasPayerAddress} is not connected in MetaMask. ` +
+          `Please add or select that account in MetaMask and try again.`,
+        );
+      }
+
       // Gas payer is a secondary address — verify it can fund the sender with ETH for gas
       const required = GAS_FUNDING_AMOUNT + GAS_FUNDING_TX_OVERHEAD;
       if (gasPayerBalance < required) {
@@ -98,7 +108,7 @@ export async function transferUSDC(
     }
   }
 
-  const signer = await provider.getSigner();
+  const signer = await provider.getSigner(fromAddress);
   const usdcContract = new Contract(config.usdcAddress, USDC_ABI, signer);
   const amountInWei = parseUnits(config.transferAmount, config.usdcDecimals);
 
