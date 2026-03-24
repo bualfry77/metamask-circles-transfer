@@ -1,167 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MetaMask → Circles USDC Transfer</title>
-    <style>
-      *, *::before, *::after { box-sizing: border-box; }
-      body {
-        font-family: monospace;
-        background: #1a1a2e;
-        color: #e0e0e0;
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        min-height: 100vh;
-        margin: 0;
-        padding: 2rem 1rem;
-      }
-      #app {
-        width: 100%;
-        max-width: 640px;
-      }
-      h1 { color: #f6851b; margin-bottom: 0.25rem; }
-      h2 { color: #c0a060; font-size: 0.95rem; margin: 1.5rem 0 0.5rem; }
-      p { margin: 0.25rem 0 1rem; color: #a0a0b0; font-size: 0.9rem; }
-      .actions { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
-      button {
-        background: #f6851b;
-        color: #fff;
-        border: none;
-        border-radius: 6px;
-        padding: 0.65rem 1.5rem;
-        font-size: 0.95rem;
-        font-family: monospace;
-        cursor: pointer;
-      }
-      button:disabled { opacity: 0.45; cursor: not-allowed; }
-      button#transfer-btn { background: #2e7d46; }
-      button#transfer-btn:not(:disabled):hover { background: #3a9e5a; }
-      button#connect-btn:not(:disabled):hover { background: #e07010; }
-      button#add-network-btn { background: #1a6fa8; }
-      button#add-network-btn:not(:disabled):hover { background: #2285cc; }
-      #wallet-info {
-        display: none;
-        background: #0f0f23;
-        border: 1px solid #2a2a4a;
-        border-radius: 8px;
-        padding: 0.75rem 1rem;
-        margin-bottom: 1rem;
-        font-size: 0.88rem;
-      }
-      #wallet-info span { color: #f6851b; }
-      pre#output {
-        background: #0f0f23;
-        padding: 1rem;
-        border-radius: 8px;
-        text-align: left;
-        overflow: auto;
-        max-height: 280px;
-        font-size: 0.82rem;
-        white-space: pre-wrap;
-        word-break: break-all;
-        margin: 0;
-      }
-      #tx-history {
-        background: #0f0f23;
-        border-radius: 8px;
-        padding: 0.75rem 1rem;
-        font-size: 0.82rem;
-        min-height: 60px;
-      }
-      .empty { color: #666; margin: 0; }
-      .gas-payer-section { margin-bottom: 1rem; }
-      .gas-payer-section input[type="text"] {
-        background: #0f0f23;
-        border: 1px solid #2a2a4a;
-        border-radius: 6px;
-        color: #e0e0e0;
-        font-family: monospace;
-        font-size: 0.88rem;
-        padding: 0.5rem 0.75rem;
-        width: 100%;
-        outline: none;
-      }
-      .gas-payer-section input[type="text"]:focus { border-color: #f6851b; }
-      .gas-payer-section input[type="text"]::placeholder { color: #555; }
-      button#add-gnosis-btn { background: #4f46b8; }
-      button#add-gnosis-btn:not(:disabled):hover { background: #6359d4; }
-      button#check-circles-btn { background: #1a7a6e; }
-      button#check-circles-btn:not(:disabled):hover { background: #229988; }
-      button#mint-crc-btn { background: #7c5c1e; display: none; }
-      button#mint-crc-btn:not(:disabled):hover { background: #9e7828; }
-      #circles-info {
-        display: none;
-        background: #0f0f23;
-        border: 1px solid #2a2a4a;
-        border-radius: 8px;
-        padding: 0.75rem 1rem;
-        margin-bottom: 1rem;
-        font-size: 0.88rem;
-        line-height: 1.7;
-      }
-      #circles-info a { color: #6ab0f5; }
-      .tx-item {
-        border-left: 3px solid #555;
-        padding: 0.4rem 0.6rem;
-        margin-bottom: 0.5rem;
-        border-radius: 0 4px 4px 0;
-      }
-      .tx-item.success { border-color: #2e7d46; }
-      .tx-item.failed  { border-color: #c0392b; }
-      .tx-hash a { color: #6ab0f5; text-decoration: none; }
-      .tx-hash a:hover { text-decoration: underline; }
-      .tx-details { color: #c0c0d0; margin: 0.15rem 0; }
-      .tx-time { color: #666; font-size: 0.78rem; }
-    </style>
-  </head>
-  <body>
-    <div id="app">
-      <h1>MetaMask → Circles USDC Transfer</h1>
-      <p>Connect your MetaMask wallet and transfer 19,980 USDC to the Circles network.</p>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check USDC Balance</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"></script>
+</head>
+<body>
+    <h1>Check USDC Balance</h1>
+    <input type="text" id="walletAddress" placeholder="Enter wallet address" />
+    <button id="checkBalance">Check Balance</button>
+    <p id="balance"></p>
 
-      <div id="wallet-info">
-        🔑 <strong>Address:</strong> <span id="wallet-address">—</span>
-        &nbsp;&nbsp;
-        ⚡ <strong>ETH:</strong> <span id="wallet-eth-balance">—</span>
-        &nbsp;&nbsp;
-        💰 <strong>USDC:</strong> <span id="wallet-balance">—</span>
-      </div>
+    <script>
+        const usdcAddress = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+        const rpcUrl = 'https://virtual.base.rpc.tenderly.com';
+        let web3;
 
-      <div class="actions">
-        <button id="add-network-btn">Add Network to MetaMask</button>
-        <button id="connect-btn">Connect MetaMask</button>
-        <button id="transfer-btn" disabled>Transfer 19,980 USDC</button>
-      </div>
+        window.addEventListener('load', async () => {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+            } else {
+                alert('Please install MetaMask!');
+            }
+        });
 
-      <h2>Gas Payer Address (Optional)</h2>
-      <p>Provide a secondary address to fund gas fees for this transaction. Leave empty to pay gas from your connected wallet.</p>
-      <div class="gas-payer-section">
-        <input
-          type="text"
-          id="gas-payer-address"
-          placeholder="0x… leave empty to pay gas yourself"
-          autocomplete="off"
-          spellcheck="false"
-        />
-      </div>
+        document.getElementById('checkBalance').addEventListener('click', async () => {
+            const walletAddress = document.getElementById('walletAddress').value;
+            const contract = new web3.eth.Contract([
+                {
+                    "constant": true,
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "address"
+                        }
+                    ],
+                    "name": "balanceOf",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "payable": false,
+                    "stateMutability": "view",
+                    "type": "function"
+                }
+            ], usdcAddress);
 
-      <h2>Circles Network</h2>
-      <p>Check whether your wallet is registered on the Circles protocol (Gnosis Chain) and interact with your CRC tokens.</p>
-      <div class="actions">
-        <button id="add-gnosis-btn">Add Gnosis Chain</button>
-        <button id="check-circles-btn">Check Circles Status</button>
-        <button id="mint-crc-btn">Mint CRC</button>
-      </div>
-      <div id="circles-info"></div>
-
-      <h2>Activity Log</h2>
-      <pre id="output">Ready. Connect MetaMask to begin.</pre>
-
-      <h2>Transaction History</h2>
-      <div id="tx-history"><p class="empty">No transactions yet.</p></div>
-    </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+            try {
+                const balance = await contract.methods.balanceOf(walletAddress).call();
+                document.getElementById('balance').innerText = `Balance: ${web3.utils.fromWei(balance, 'mwei')} USDC`;
+            } catch (error) {
+                document.getElementById('balance').innerText = 'Error: ' + error.message;
+            }
+        });
+    </script>
+</body>
 </html>
