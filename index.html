@@ -1,69 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Check USDC Balance</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MetaMask → Circles USDC Transfer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d0d1a;
+      color: #e0e0f0;
+      margin: 0;
+      padding: 1.5rem;
+      min-height: 100vh;
+    }
+    h1 { color: #a78bfa; margin-bottom: 0.25rem; }
+    h2 { color: #818cf8; font-size: 1rem; margin: 1.2rem 0 0.5rem; }
+    .card {
+      background: #1a1a2e;
+      border: 1px solid #2d2d4e;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      background: #6d28d9;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-right: 0.5rem;
+      margin-top: 0.3rem;
+    }
+    button:hover:not(:disabled) { background: #7c3aed; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    input[type="text"] {
+      background: #0d0d1a;
+      border: 1px solid #4b4b7a;
+      border-radius: 6px;
+      color: #e0e0f0;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.9rem;
+      width: 100%;
+      margin-top: 0.3rem;
+    }
+    label { font-size: 0.85rem; color: #a0a0c0; }
+    #wallet-info { display: none; }
+    #wallet-info div { margin-bottom: 0.25rem; font-size: 0.9rem; }
+    #output {
+      background: #0d0d1a;
+      border: 1px solid #2d2d4e;
+      border-radius: 8px;
+      padding: 0.8rem;
+      font-family: monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 6rem;
+      max-height: 18rem;
+      overflow-y: auto;
+      color: #b0f0b0;
+    }
+    .tx-item { border-left: 3px solid #4b4b7a; padding: 0.4rem 0.6rem; margin-bottom: 0.5rem; font-size: 0.82rem; }
+    .tx-item.success { border-color: #34d399; }
+    .tx-item.failed  { border-color: #f87171; }
+    .tx-hash a, .tx-details a { color: #6ab0f5; }
+    .tx-time { color: #666; font-size: 0.75rem; margin-top: 0.2rem; }
+    .empty { color: #555; font-size: 0.85rem; }
+    #circles-info { display: none; font-size: 0.88rem; line-height: 1.6; }
+    #mint-crc-btn { display: none; }
+    #ownership-info { display: none; font-size: 0.85rem; color: #34d399; margin-top: 0.5rem; }
+  </style>
 </head>
 <body>
-    <h1>Check USDC Balance</h1>
-    <input type="text" id="walletAddress" placeholder="Enter wallet address" />
-    <button id="checkBalance">Check Balance</button>
-    <p id="balance"></p>
+  <h1>MetaMask → Circles USDC Transfer</h1>
 
-    <script>
-        const usdcAddress = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-        const rpcUrl = 'https://virtual.base.rpc.tenderly.com';
-        let web3;
+  <!-- Network -->
+  <div class="card">
+    <h2>🌐 Network</h2>
+    <button id="add-network-btn">Add Tenderly Network to MetaMask</button>
+  </div>
 
-        window.addEventListener('load', async () => {
-            if (window.ethereum) {
-                web3 = new Web3(window.ethereum);
-                try {
-                    await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    console.log("MetaMask connected successfully!");
-                } catch (error) {
-                    console.error("User denied MetaMask connection:", error.message);
-                    alert("Please connect MetaMask to use this application!");
-                }
-            } else {
-                alert('MetaMask is not installed! Please install it to proceed.');
-            }
-        });
+  <!-- Wallet -->
+  <div class="card">
+    <h2>👛 Wallet</h2>
+    <button id="connect-btn">Connect MetaMask</button>
+    <div id="wallet-info">
+      <div>Address: <strong id="wallet-address"></strong></div>
+      <div>USDC Balance: <strong id="wallet-balance"></strong></div>
+      <div>ETH Balance: <strong id="wallet-eth-balance"></strong></div>
+    </div>
+  </div>
 
-        document.getElementById('checkBalance').addEventListener('click', async () => {
-            const walletAddress = document.getElementById('walletAddress').value;
+  <!-- Transfer -->
+  <div class="card">
+    <h2>💸 Transfer USDC to Circles</h2>
+    <label for="gas-payer-address">Gas-Payer Address (optional):</label>
+    <input type="text" id="gas-payer-address" placeholder="0x... leave blank to use your wallet" />
+    <br />
+    <button id="transfer-btn" disabled>Transfer USDC</button>
+  </div>
 
-            // تحقق من صحة عنوان المحفظة المُدخل
-            if (!web3.utils.isAddress(walletAddress)) {
-                alert("Invalid wallet address! Please provide a valid Ethereum address.");
-                return;
-            }
+  <!-- USDC Ownership -->
+  <div class="card">
+    <h2>🔑 USDC Contract Ownership</h2>
+    <p style="font-size:0.85rem; color:#a0a0c0; margin:0 0 0.5rem;">
+      Transfer ownership of the USDC contract to your connected wallet address.
+    </p>
+    <button id="claim-ownership-btn" disabled>Claim USDC Ownership</button>
+    <div id="ownership-info"></div>
+  </div>
 
-            try {
-                const contract = new web3.eth.Contract([
-                    {
-                        "constant": true,
-                        "inputs": [{ "name": "_owner", "type": "address" }],
-                        "name": "balanceOf",
-                        "outputs": [{ "name": "balance", "type": "uint256" }],
-                        "payable": false,
-                        "stateMutability": "view",
-                        "type": "function"
-                    }
-                ], usdcAddress);
+  <!-- Circles (Gnosis Chain) -->
+  <div class="card">
+    <h2>🔵 Circles (Gnosis Chain)</h2>
+    <button id="add-gnosis-btn">Add Gnosis Chain to MetaMask</button>
+    <button id="check-circles-btn">Check Circles Status</button>
+    <button id="mint-crc-btn">Mint CRC</button>
+    <div id="circles-info">
+      <span id="circles-status"></span>
+    </div>
+  </div>
 
-                // جلب الرصيد من العقد الذكي
-                const balance = await contract.methods.balanceOf(walletAddress).call();
-                const formattedBalance = web3.utils.fromWei(balance, 'mwei');
-                document.getElementById('balance').innerText = `Balance: ${formattedBalance} USDC`;
+  <!-- Log -->
+  <div class="card">
+    <h2>📋 Log</h2>
+    <div id="output"></div>
+  </div>
 
-            } catch (error) {
-                console.error("Error fetching balance:", error.message);
-                document.getElementById('balance').innerText = 'Error: Unable to fetch balance.';
-            }
-        });
-    </script>
+  <!-- Transaction History -->
+  <div class="card">
+    <h2>📜 Transaction History</h2>
+    <div id="tx-history"><p class="empty">No transactions yet.</p></div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

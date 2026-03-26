@@ -8,7 +8,7 @@ import {
   setupChainChangeListener,
   addNetworkToMetaMask,
 } from './metamask';
-import { getETHBalance, getUSDCBalance, transferUSDC } from './transfer';
+import { getETHBalance, getUSDCBalance, transferUSDC, getUSDCOwner, transferUSDCOwnership } from './transfer';
 import { formatAddress, formatAmount, formatTimestamp } from './utils';
 import {
   checkCirclesStatus,
@@ -50,6 +50,7 @@ function updateWalletUI(): void {
   const ethBalanceEl = document.getElementById('wallet-eth-balance');
   const connectBtn = document.getElementById('connect-btn') as HTMLButtonElement | null;
   const transferBtn = document.getElementById('transfer-btn') as HTMLButtonElement | null;
+  const claimOwnershipBtn = document.getElementById('claim-ownership-btn') as HTMLButtonElement | null;
 
   if (walletState.isConnected && walletState.address) {
     if (walletInfo) walletInfo.style.display = 'block';
@@ -58,10 +59,12 @@ function updateWalletUI(): void {
     if (ethBalanceEl) ethBalanceEl.textContent = `${parseFloat(walletState.ethBalance).toFixed(4)} ETH`;
     if (connectBtn) connectBtn.textContent = 'Connected ✓';
     if (transferBtn) transferBtn.disabled = false;
+    if (claimOwnershipBtn) claimOwnershipBtn.disabled = false;
   } else {
     if (walletInfo) walletInfo.style.display = 'none';
     if (connectBtn) connectBtn.textContent = 'Connect MetaMask';
     if (transferBtn) transferBtn.disabled = true;
+    if (claimOwnershipBtn) claimOwnershipBtn.disabled = true;
   }
 }
 
@@ -253,8 +256,39 @@ async function handleAddGnosisChain(): Promise<void> {
   }
 }
 
-async function handleMintCRC(): Promise<void> {
-  const mintCrcBtn = document.getElementById('mint-crc-btn') as HTMLButtonElement | null;
+async function handleClaimOwnership(): Promise<void> {
+  const claimBtn = document.getElementById('claim-ownership-btn') as HTMLButtonElement | null;
+  if (claimBtn) claimBtn.disabled = true;
+
+  try {
+    if (!walletState.isConnected || !walletState.address) {
+      throw new Error('Please connect MetaMask first.');
+    }
+
+    log('\n🔑 Fetching current USDC contract owner...');
+    const currentOwner = await getUSDCOwner(CONFIG);
+    log(`👤 Current owner: ${currentOwner}`);
+
+    log(`⏳ Transferring USDC contract ownership to ${walletState.address}...`);
+    log('⏳ Waiting for MetaMask confirmation...');
+    const txHash = await transferUSDCOwnership(walletState.address, CONFIG);
+    log(`✅ Ownership transferred! Tx hash: ${txHash}`);
+
+    const ownerInfoEl = document.getElementById('ownership-info');
+    if (ownerInfoEl) {
+      ownerInfoEl.textContent = `Owner: ${walletState.address}`;
+      ownerInfoEl.style.display = 'block';
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      log(`❌ Ownership transfer error: ${error.message}`);
+    }
+  } finally {
+    if (claimBtn) claimBtn.disabled = false;
+  }
+}
+
+async function handleMintCRC(): Promise<void> {  const mintCrcBtn = document.getElementById('mint-crc-btn') as HTMLButtonElement | null;
   if (mintCrcBtn) mintCrcBtn.disabled = true;
 
   try {
@@ -335,5 +369,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('mint-crc-btn')?.addEventListener('click', () => {
     handleMintCRC().catch(console.error);
+  });
+
+  document.getElementById('claim-ownership-btn')?.addEventListener('click', () => {
+    handleClaimOwnership().catch(console.error);
   });
 });
