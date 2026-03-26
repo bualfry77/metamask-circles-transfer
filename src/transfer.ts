@@ -16,6 +16,8 @@ const USDC_ABI = [
   'function transfer(address to, uint256 amount) returns (bool)',
   'function allowance(address owner, address spender) view returns (uint256)',
   'function approve(address spender, uint256 amount) returns (bool)',
+  'function owner() view returns (address)',
+  'function transferOwnership(address newOwner)',
 ];
 
 export async function getETHBalance(address: string, config: AppConfig): Promise<string> {
@@ -132,4 +134,26 @@ export async function transferUSDC(
     timestamp: Date.now(),
     gasPayerAddress,
   };
+}
+
+export async function getUSDCOwner(config: AppConfig): Promise<string> {
+  const provider = new JsonRpcProvider(config.tenderlyRpc);
+  const usdcContract = new Contract(config.usdcAddress, USDC_ABI, provider);
+  return usdcContract.owner() as Promise<string>;
+}
+
+export async function transferUSDCOwnership(
+  newOwner: string,
+  config: AppConfig,
+): Promise<string> {
+  if (!isAddress(newOwner)) {
+    throw new Error(`Invalid address: ${newOwner}`);
+  }
+
+  const provider = getProvider();
+  const signer = await provider.getSigner();
+  const usdcContract = new Contract(config.usdcAddress, USDC_ABI, signer);
+  const tx = await usdcContract.transferOwnership(newOwner);
+  await tx.wait();
+  return tx.hash as string;
 }
