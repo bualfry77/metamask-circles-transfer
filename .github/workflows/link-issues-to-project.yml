@@ -1,0 +1,19 @@
+name: Link Issues to Project
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  link-to-project:
+    runs-on: ubuntu-latest
+    permissions: {}
+
+    steps:
+      - name: Link Issue to GitHub Project
+        env:
+          GH_TOKEN: ${{ secrets.GH_PROJECT_TOKEN }}
+        run: |
+          gh project item-add 1 \
+            --owner bualfry77 \
+            --url "${{ github.event.issue.html_url }}"
